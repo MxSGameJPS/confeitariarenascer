@@ -7,9 +7,14 @@ import { PERMISSIONS } from "@/src/config/permissions";
 import { requirePermissionSession } from "@/src/shared/auth/principal-session";
 import { handleApiError } from "@/src/shared/http/api-response";
 
+function getSurface(request) {
+  const value = request.headers.get("x-renascer-surface");
+  return value === "admin" || value === "staff" ? value : null;
+}
+
 export async function PATCH(request, { params }) {
   try {
-    const actor = await requirePermissionSession(PERMISSIONS.EMPLOYEES_UPDATE);
+    const actor = await requirePermissionSession(PERMISSIONS.EMPLOYEES_UPDATE, getSurface(request));
     const { id } = await params;
     const employeeId = validateEmployeeId(id);
     const input = validateUpdateEmployee(await request.json());
