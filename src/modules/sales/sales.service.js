@@ -1,0 +1,80 @@
+import { AppError } from "@/src/shared/errors/app-error";
+import {
+  acceptDelivery,
+  cancelSale,
+  closeCommand,
+  createOperationalSale,
+  findProductsForSale,
+  listOperationalSales,
+} from "@/src/modules/sales/sales.repository";
+
+const cents = (value) => Math.round(Number(value) * 100);
+const amount = (value) => Number((value / 100).toFixed(2));
+const actorPayload = (actor) => ({ p_actor_kind: actor.kind === "admin" ? "admin" : "employee", p_actor_id: actor.id });
+
+function mapSale(sale) {
+  return {
+    ...sale,
+    subtotal: Number(sale.subtotal),
+    delivery_fee: Number(sale.delivery_fee),
+    total: Number(sale.total),
+    items: (sale.items ?? []).map((item) => ({ ...item, unit_price: Number(item.unit_price), subtotal: Number(item.subtotal) })),
+    payments: (sale.payments ?? []).map((payment) => ({ ...payment, amount: Number(payment.amount) })),
+  };
+}
+
+export async function listSalesService(filters) {
+  return (await listOperationalSales(filters)).map(mapSale);
+}
+
+export async function createOperationalSaleService(input, actor) {
+  const ids = [...new Set(input.items.map((item) => item.productId))];
+  const products = await findProductsForSale(ids);
+  const byId = new Map(products.map((product) => [product.id, product]));
+  if (ids.some((id) => !byId.has(id))) {
+    throw new AppError("Um ou mais produtos não estão disponíveis.", { statusCode: 409, code: "PRODUCT_UNAVAILABLE" });
+  }
+
+  let subtotalCents = 0;
+  const items = input.items.map((item) => {
+    const product = byId.get(item.productId);
+    const unitCents = cents(product.price);
+    const itemCents = unitCents * item.quantity;
+    subtotalCents += itemCents;
+    if (product.stock_control && Number(product.stock_quantity) < item.quantity) {
+      throw new AppError(`Estoque insuficiente para ${product.name}.`, { statusCode: 409, code: "INSUFFICIENT_STOCK" });
+    }
+    return { product_id: product.id, product_name: product.name, unit_price: amount(unitCents), quantity: item.quantity, subtotal: amount(itemCents) };
+  });
+
+  const total = amount(subtotalCents);
+  const paidCents = input.payments.reduce((sum, payment) => sum + cents(payment.amount), 0);
+  if (input.channel === "pos" && paidCents !== subtotalCents) {
+    throw new AppError("Os pagamentos devem totalizar exatamente a venda.", { statusCode: 400, code: "PAYMENT_TOTAL_MISMATCH" });
+  }
+  if (input.changeFor !== null && input.payments.some((payment) => payment.method !== "dinheiro")) {
+    throw new AppError("Troco só pode ser informado em pagamento integral em dinheiro.", { statusCode: 400, code: "INVALID_CHANGE_AMOUNT" });
+  }
+  if (input.changeFor !== null && cents(input.changeFor) < subtotalCents) {
+    throw new AppError("O valor para troco é menor que o total.", { statusCode: 400, code: "INVALID_CHANGE_AMOUNT" });
+  }
+
+  return createOperationalSale({
+    p_sale: { channel: input.channel, subtotal: total, total, command_label: input.commandLabel, notes: input.notes, change_for: input.changeFor },
+    p_items: items,
+    p_payments: input.payments,
+    ...actorPayload(actor),
+  });
+}
+
+export async function acceptDeliveryService(id, actor) {
+  return acceptDelivery({ p_order_id: id, ...actorPayload(actor) });
+}
+
+export async function closeCommandService(id, payments, actor) {
+  return closeCommand({ p_order_id: id, p_payments: payments, ...actorPayload(actor) });
+}
+
+export async function cancelSaleService(id, input, actor) {
+  return cancelSale({ p_order_id: id, p_item_id: input.itemId, p_reason: input.reason, ...actorPayload(actor) });
+}
