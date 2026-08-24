@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,8 @@ const emptyProduct = {
   stockQuantity: 0,
   sortOrder: 0,
   pricingMode: "fixed",
+  availableDelivery: true,
+  availableInternal: true,
 };
 
 const brl = (value) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -34,6 +37,7 @@ export default function AdminCatalog() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [catalogView, setCatalogView] = useState("delivery");
 
   const request = useCallback(async (url, options) => {
     const response = await fetch(url, options);
@@ -59,12 +63,14 @@ export default function AdminCatalog() {
     }
   }, [request]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(load, 0); return () => window.clearTimeout(timer); }, [load]);
 
   const stats = useMemo(() => ({
     categories: catalog.categories.filter((item) => item.active).length,
     products: catalog.products.filter((item) => item.active).length,
     featured: catalog.products.filter((item) => item.active && item.featured).length,
+    delivery: catalog.products.filter((item) => item.active && item.available_delivery).length,
+    internal: catalog.products.filter((item) => item.active && item.available_internal).length,
   }), [catalog]);
 
   function feedback(text) {
@@ -141,6 +147,8 @@ export default function AdminCatalog() {
       stockQuantity: item.stock_quantity,
       sortOrder: item.sort_order,
       pricingMode: item.pricing_mode || "fixed",
+      availableDelivery: item.available_delivery,
+      availableInternal: item.available_internal,
     });
     document.getElementById("product-form")?.scrollIntoView({ behavior: "smooth" });
   }
@@ -157,14 +165,14 @@ export default function AdminCatalog() {
   return (
     <div className={styles.wrap}>
       <header className={styles.header}>
-        <div><span>OPERAÇÃO</span><h1>Cardápio</h1><p>Cadastre produtos, organize categorias e controle o que aparece para o cliente.</p></div>
+        <div><span>OPERAÇÃO</span><h1>Cardápios</h1><p>Organize separadamente os produtos do delivery e das vendas internas.</p></div>
         <a href="/" target="_blank" rel="noreferrer">Ver site</a>
       </header>
 
       <section className={styles.stats}>
         <article><strong>{stats.categories}</strong><span>Categorias ativas</span></article>
-        <article><strong>{stats.products}</strong><span>Produtos ativos</span></article>
-        <article><strong>{stats.featured}</strong><span>Em destaque</span></article>
+        <article><strong>{stats.delivery}</strong><span>No delivery</span></article>
+        <article><strong>{stats.internal}</strong><span>Na venda interna</span></article>
       </section>
 
       {message && <div className={styles.success}>{message}</div>}
@@ -195,12 +203,14 @@ export default function AdminCatalog() {
           <label>Categoria<select value={productForm.categoryId} onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}><option value="">Sem categoria</option>{catalog.categories.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Preço (R$)<input type="number" min="0" step="0.01" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} required /></label>
           <label>Unidade<input value={productForm.unit} onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })} /></label>
-          <label>Tipo de preço<select value={productForm.pricingMode} onChange={(e) => setProductForm({ ...productForm, pricingMode: e.target.value })}><option value="fixed">Preço fixo</option><option value="variable">Informado após pesagem</option></select></label>
+          <label>Tipo de preço<select value={productForm.pricingMode} onChange={(e) => setProductForm({ ...productForm, pricingMode: e.target.value, ...(e.target.value === "variable" ? { availableDelivery: false, featured: false } : {}) })}><option value="fixed">Preço fixo</option><option value="variable">Informado após pesagem</option></select></label>
           <label className={styles.wide}>Descrição<textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} rows="3" /></label>
           <label>Imagem<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
           <label>Ordem<input type="number" value={productForm.sortOrder} onChange={(e) => setProductForm({ ...productForm, sortOrder: Number(e.target.value) })} /></label>
           <label className={styles.check}><input type="checkbox" checked={productForm.active} onChange={(e) => setProductForm({ ...productForm, active: e.target.checked })} /> Disponível</label>
-          <label className={styles.check}><input type="checkbox" checked={productForm.featured} onChange={(e) => setProductForm({ ...productForm, featured: e.target.checked })} /> Destaque</label>
+          <label className={styles.check}><input type="checkbox" checked={productForm.availableDelivery} disabled={productForm.pricingMode === "variable"} onChange={(e) => setProductForm({ ...productForm, availableDelivery: e.target.checked, ...(!e.target.checked ? { featured: false } : {}) })} /> Cardápio delivery</label>
+          <label className={styles.check}><input type="checkbox" checked={productForm.availableInternal} onChange={(e) => setProductForm({ ...productForm, availableInternal: e.target.checked })} /> Venda interna</label>
+          <label className={styles.check}><input type="checkbox" checked={productForm.featured} disabled={!productForm.availableDelivery} onChange={(e) => setProductForm({ ...productForm, featured: e.target.checked })} /> Destaque no site</label>
           <label className={styles.check}><input type="checkbox" checked={productForm.stockControl} onChange={(e) => setProductForm({ ...productForm, stockControl: e.target.checked })} /> Controlar estoque</label>
           {productForm.stockControl && <label>Estoque<input type="number" min="0" step="0.001" value={productForm.stockQuantity} onChange={(e) => setProductForm({ ...productForm, stockQuantity: Number(e.target.value) })} /></label>}
           <div className={styles.actions}>
@@ -209,14 +219,20 @@ export default function AdminCatalog() {
           </div>
         </form>
 
+        <div className={styles.catalogTabs} role="tablist" aria-label="Escolher cardápio">
+          <button type="button" role="tab" aria-selected={catalogView === "delivery"} onClick={() => setCatalogView("delivery")}>Delivery <span>{stats.delivery}</span></button>
+          <button type="button" role="tab" aria-selected={catalogView === "internal"} onClick={() => setCatalogView("internal")}>Venda interna <span>{stats.internal}</span></button>
+        </div>
         {loading ? <p className={styles.loading}>Carregando catálogo...</p> : <div className={styles.products}>
-          {catalog.products.map((item) => <article key={item.id} className={!item.active ? styles.archived : ""}>
+          {catalog.products.filter((item) => catalogView === "delivery" ? item.available_delivery : item.available_internal).map((item) => <article key={item.id} className={!item.active ? styles.archived : ""}>
             <div className={styles.thumb}>{item.image_url ? <img src={item.image_url} alt="" /> : <span>Sem foto</span>}</div>
-            <div className={styles.productInfo}><small>{item.category?.name || "Sem categoria"}</small><strong>{item.name}</strong><span>{item.pricing_mode === "variable" ? "Preço após pesagem" : brl(item.price)} · {item.unit}</span>{item.stock_control && <em>Estoque: {item.stock_quantity}</em>}</div>
+            <div className={styles.productInfo}><small>{item.category?.name || "Sem categoria"}</small><strong>{item.name}</strong><span>{item.pricing_mode === "variable" ? "Preço após pesagem" : brl(item.price)} · {item.unit}</span><div className={styles.channelBadges}>{item.available_delivery && <em>Delivery</em>}{item.available_internal && <em>Interno</em>}</div>{item.stock_control && <em>Estoque: {item.stock_quantity}</em>}</div>
             <div className={styles.rowActions}><button onClick={() => editProduct(item)}>Editar</button>{item.active && <button onClick={() => archive("products", item.id, item.name)}>Arquivar</button>}</div>
           </article>)}
+          {catalog.products.filter((item) => catalogView === "delivery" ? item.available_delivery : item.available_internal).length === 0 && <p className={styles.emptyCatalog}>Nenhum produto neste cardápio. Edite ou cadastre um produto acima.</p>}
         </div>}
       </section>
     </div>
   );
 }
+

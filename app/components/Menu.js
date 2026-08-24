@@ -20,7 +20,7 @@ export default function Menu() {
 
     Promise.all([
       fetch("/api/categories", { cache: "no-store" }),
-      fetch("/api/products", { cache: "no-store" }),
+      fetch("/api/products?channel=delivery", { cache: "no-store" }),
     ])
       .then(async ([categoriesResponse, productsResponse]) => {
         const [categoriesBody, productsBody] = await Promise.all([

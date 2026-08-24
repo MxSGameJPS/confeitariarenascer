@@ -22,7 +22,6 @@ export default function CheckoutModal() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState(null);
-  const hasVariablePrice = items.some((item) => item.pricingMode === "variable");
 
   if (!checkout) return null;
 
@@ -136,7 +135,7 @@ export default function CheckoutModal() {
             </div>
 
             {paymentMethod === "dinheiro" && <div className={styles.field}><label>TROCO PARA (OPCIONAL)</label><input name="changeFor" inputMode="decimal" placeholder="Ex.: 100,00" /></div>}
-            <div className={styles.summary}><span>{hasVariablePrice ? "Subtotal conhecido" : "Subtotal do carrinho"}</span><strong>{brl(total)}</strong><small>{hasVariablePrice ? "Produtos pesados terão o valor informado pela equipe após a pesagem. " : ""}A taxa de entrega, quando aplicável, será calculada pelo sistema.</small></div>
+            <div className={styles.summary}><span>Subtotal do carrinho</span><strong>{brl(total)}</strong><small>A taxa de entrega, quando aplicável, será calculada pelo sistema.</small></div>
             {error && <p className={styles.error} role="alert">{error}</p>}
             <button type="submit" className={styles.confirm} disabled={busy || items.length === 0}>{busy ? "Enviando pedido..." : "Enviar pedido"}</button>
           </form>

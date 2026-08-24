@@ -50,7 +50,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
   useEffect(() => {
     if (channel === "delivery") return;
     let active = true;
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products?channel=internal", { cache: "no-store" })
       .then(async (response) => ({ ok: response.ok, body: await response.json() }))
       .then(({ ok, body }) => {
         if (!active) return;

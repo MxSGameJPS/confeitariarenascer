@@ -11,7 +11,7 @@ export default function FeaturedProducts() {
   useEffect(() => {
     let active = true;
 
-    fetch("/api/products?featured=true", { cache: "no-store" })
+    fetch("/api/products?channel=delivery&featured=true", { cache: "no-store" })
       .then(async (response) => ({ ok: response.ok, body: await response.json() }))
       .then(({ ok, body }) => {
         if (!active) return;
