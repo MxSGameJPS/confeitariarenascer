@@ -119,3 +119,10 @@ export function validateAcceptCommandRequest(payload) {
     unitPrice: money(item?.unitPrice, "Valor do item pesado"),
   }));
 }
+
+export function validateDeliveryStatus(payload) {
+  const allowed = new Set(["em_preparo", "pronto", "saiu_entrega", "concluido"]);
+  if (!payload || !allowed.has(payload.status)) invalid("Próximo status inválido.");
+  return payload.status;
+}
+

@@ -14,12 +14,23 @@ export async function getStoreSettings() {
 
 export async function findActiveProductsByIds(productIds) {
   const params = new URLSearchParams({
-    select: "id,name,price,active",
+    select: "id,name,price,active,pricing_mode",
     id: `in.(${productIds.join(",")})`,
     active: "eq.true",
   });
 
   return supabaseServerRequest(`/rest/v1/products?${params}`);
+}
+
+export async function findDeliveryByTrackingToken(token) {
+  const params = new URLSearchParams({
+    select: "order_number,status,payment_status,payment_method,fulfillment_type,subtotal,delivery_fee,total,created_at,accepted_at,preparation_started_at,ready_at,dispatched_at,completed_at,items:order_items(product_name,quantity,unit_price,subtotal,pricing_mode,status)",
+    tracking_token: `eq.${token}`,
+    channel: "eq.delivery",
+    limit: "1",
+  });
+  const rows = await supabaseServerRequest(`/rest/v1/orders?${params}`);
+  return rows[0] ?? null;
 }
 
 export async function createOrderTransaction({ customer, order, items }) {
@@ -32,3 +43,4 @@ export async function createOrderTransaction({ customer, order, items }) {
     },
   });
 }
+

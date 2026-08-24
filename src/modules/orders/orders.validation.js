@@ -113,7 +113,7 @@ export function validateCreateOrder(payload) {
 
   let changeFor = null;
   if (payload.changeFor !== undefined && payload.changeFor !== null && payload.changeFor !== "") {
-    const parsed = Number(payload.changeFor);
+    const parsed = Number(String(payload.changeFor).replace(",", "."));
     if (!Number.isFinite(parsed) || parsed <= 0) invalid("Valor para troco inválido.");
     changeFor = Number(parsed.toFixed(2));
   }
@@ -135,3 +135,11 @@ export function validateCreateOrder(payload) {
     items,
   };
 }
+
+export function validateTrackingToken(value) {
+  if (typeof value !== "string" || !UUID_PATTERN.test(value)) {
+    invalid("Código de acompanhamento inválido.");
+  }
+  return value;
+}
+

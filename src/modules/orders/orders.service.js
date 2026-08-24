@@ -1,5 +1,6 @@
 import {
   createOrderTransaction,
+  findDeliveryByTrackingToken,
   findActiveProductsByIds,
   getStoreSettings,
 } from "@/src/modules/orders/orders.repository";
@@ -39,9 +40,12 @@ export async function createOrderService(input) {
   }
 
   let subtotalCents = 0;
+  let hasVariablePrice = false;
   const normalizedItems = input.items.map((item) => {
     const product = productsById.get(item.productId);
-    const unitPriceCents = toCents(product.price);
+    const variable = product.pricing_mode === "variable";
+    const unitPriceCents = variable ? 0 : toCents(product.price);
+    hasVariablePrice ||= variable;
     const itemSubtotalCents = unitPriceCents * item.quantity;
     subtotalCents += itemSubtotalCents;
 
@@ -51,11 +55,12 @@ export async function createOrderService(input) {
       unit_price: fromCents(unitPriceCents),
       quantity: item.quantity,
       subtotal: fromCents(itemSubtotalCents),
+      pricing_mode: product.pricing_mode,
     };
   });
 
   const minimumOrderCents = toCents(settings.minimum_order || 0);
-  if (subtotalCents < minimumOrderCents) {
+  if (!hasVariablePrice && subtotalCents < minimumOrderCents) {
     throw new AppError(
       `Pedido mínimo de R$ ${fromCents(minimumOrderCents).toFixed(2).replace(".", ",")}.`,
       {
@@ -98,3 +103,22 @@ export async function createOrderService(input) {
     total: fromCents(totalCents),
   };
 }
+
+export async function getDeliveryTrackingService(token) {
+  const order = await findDeliveryByTrackingToken(token);
+  if (!order) {
+    throw new AppError("Pedido não encontrado.", { statusCode: 404, code: "ORDER_NOT_FOUND" });
+  }
+  return {
+    ...order,
+    subtotal: Number(order.subtotal),
+    delivery_fee: Number(order.delivery_fee),
+    total: Number(order.total),
+    items: (order.items ?? []).map((item) => ({
+      ...item,
+      unit_price: Number(item.unit_price),
+      subtotal: Number(item.subtotal),
+    })),
+  };
+}
+

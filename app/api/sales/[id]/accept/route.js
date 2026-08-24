@@ -1,6 +1,6 @@
 import { PERMISSIONS } from "@/src/config/permissions";
 import { acceptDeliveryController } from "@/src/modules/sales/sales.controller";
-import { validateSaleId } from "@/src/modules/sales/sales.validation";
+import { validateAcceptCommandRequest, validateSaleId } from "@/src/modules/sales/sales.validation";
 import { requirePermissionSession } from "@/src/shared/auth/principal-session";
 import { handleApiError } from "@/src/shared/http/api-response";
 
@@ -10,6 +10,8 @@ export async function POST(request, { params }) {
   try {
     const actor = await requirePermissionSession(PERMISSIONS.DELIVERY_ACCEPT, surface(request));
     const { id } = await params;
-    return await acceptDeliveryController(validateSaleId(id), actor);
+    const payload = await request.json().catch(() => ({}));
+    return await acceptDeliveryController(validateSaleId(id), validateAcceptCommandRequest(payload), actor);
   } catch (error) { return handleApiError(error); }
 }
+

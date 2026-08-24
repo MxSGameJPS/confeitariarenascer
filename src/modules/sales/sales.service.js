@@ -1,6 +1,7 @@
 import { AppError } from "@/src/shared/errors/app-error";
 import {
   acceptDelivery,
+  advanceDelivery,
   acceptCommandRequest,
   cancelSale,
   closeCommand,
@@ -86,8 +87,16 @@ export async function createOperationalSaleService(input, actor) {
   });
 }
 
-export async function acceptDeliveryService(id, actor) {
-  return acceptDelivery({ p_order_id: id, ...actorPayload(actor) });
+export async function acceptDeliveryService(id, variablePrices, actor) {
+  return acceptDelivery({
+    p_order_id: id,
+    p_variable_prices: variablePrices.map((item) => ({ item_id: item.itemId, unit_price: item.unitPrice })),
+    ...actorPayload(actor),
+  });
+}
+
+export async function advanceDeliveryService(id, nextStatus, actor) {
+  return advanceDelivery({ p_order_id: id, p_next_status: nextStatus, ...actorPayload(actor) });
 }
 
 export async function closeCommandService(id, payments, actor) {
@@ -105,3 +114,4 @@ export async function acceptCommandRequestService(requestId, variablePrices, act
     ...actorPayload(actor),
   });
 }
+
