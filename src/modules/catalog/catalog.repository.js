@@ -13,7 +13,7 @@ export async function listActiveCategories() {
 export async function listActiveProducts({ featured } = {}) {
   const params = new URLSearchParams({
     select:
-      "id,category_id,name,slug,description,price,image_path,featured,unit,sort_order,category:categories(id,name,slug)",
+      "id,category_id,name,slug,description,price,image_path,featured,unit,sort_order,pricing_mode,category:categories(id,name,slug)",
     active: "eq.true",
     order: "sort_order.asc,name.asc",
   });

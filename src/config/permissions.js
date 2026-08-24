@@ -20,6 +20,9 @@ export const PERMISSIONS = Object.freeze({
   SUPPLIERS_MANAGE: "suppliers.manage",
   AUDIT_VIEW: "audit.view",
   SUPERADMINS_MANAGE: "superadmins.manage",
+  TABLES_VIEW: "tables.view",
+  TABLES_CREATE: "tables.create",
+  TABLES_STATUS: "tables.status",
 });
 
 const ROLE_PERMISSIONS = Object.freeze({
@@ -33,6 +36,8 @@ const ROLE_PERMISSIONS = Object.freeze({
     PERMISSIONS.POS_SELL,
     PERMISSIONS.SALES_CANCEL,
     PERMISSIONS.SALES_CANCEL_ITEM,
+    PERMISSIONS.TABLES_VIEW,
+    PERMISSIONS.TABLES_STATUS,
   ]),
   [ROLES.ATENDENTE]: new Set([
     PERMISSIONS.DELIVERY_ACCEPT,

@@ -59,6 +59,7 @@ export async function createCategoryService(input, actor) {
     slug,
     description: input.description,
     sort_order: input.sortOrder,
+    pricing_mode: input.pricingMode,
     active: input.active,
   });
 
@@ -80,6 +81,7 @@ export async function updateCategoryService(id, input, actor) {
     slug,
     description: input.description,
     sort_order: input.sortOrder,
+    pricing_mode: input.pricingMode,
     active: input.active,
   });
 

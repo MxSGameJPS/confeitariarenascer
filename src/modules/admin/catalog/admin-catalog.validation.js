@@ -80,6 +80,7 @@ export function validateCreateProduct(payload) {
     stockControl: boolean(payload.stockControl, "stockControl", false),
     stockQuantity,
     sortOrder: integer(payload.sortOrder, "sortOrder", 0),
+    pricingMode: payload.pricingMode === "variable" ? "variable" : "fixed",
   };
 }
 

@@ -44,7 +44,11 @@ export function validateCreateOperationalSale(payload) {
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) invalid(`Quantidade do item ${index + 1} inválida.`);
 
     if (item.productId) {
-      return { productId: uuid(item.productId, `Produto do item ${index + 1}`), quantity };
+      return {
+        productId: uuid(item.productId, `Produto do item ${index + 1}`),
+        quantity,
+        unitPrice: item.unitPrice == null ? null : money(item.unitPrice, `Preço do item ${index + 1}`),
+      };
     }
 
     const name = optionalText(item.name, `Descrição do item ${index + 1}`, 160);
@@ -105,4 +109,13 @@ export function validateSalesFilters(searchParams) {
     channel: channel && allowedChannels.has(channel) ? channel : null,
     status: status && /^[a-z_]{3,30}$/.test(status) ? status : null,
   };
+}
+
+export function validateAcceptCommandRequest(payload) {
+  const prices = payload?.variablePrices ?? [];
+  if (!Array.isArray(prices) || prices.length > 50) invalid("Preços de pesagem inválidos.");
+  return prices.map((item) => ({
+    itemId: uuid(item?.itemId, "Item pesado"),
+    unitPrice: money(item?.unitPrice, "Valor do item pesado"),
+  }));
 }

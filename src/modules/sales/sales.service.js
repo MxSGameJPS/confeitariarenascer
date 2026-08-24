@@ -1,6 +1,7 @@
 import { AppError } from "@/src/shared/errors/app-error";
 import {
   acceptDelivery,
+  acceptCommandRequest,
   cancelSale,
   closeCommand,
   createOperationalSale,
@@ -51,7 +52,12 @@ export async function createOperationalSaleService(input, actor) {
     }
 
     const product = byId.get(item.productId);
-    const unitCents = cents(product.price);
+    const unitCents = product.pricing_mode === "variable"
+      ? cents(item.unitPrice)
+      : cents(product.price);
+    if (product.pricing_mode === "variable" && (!item.unitPrice || item.unitPrice <= 0)) {
+      throw new AppError(`Informe o valor pesado de ${product.name}.`, { statusCode: 400, code: "VARIABLE_PRICE_REQUIRED" });
+    }
     const itemCents = unitCents * item.quantity;
     subtotalCents += itemCents;
     if (product.stock_control && Number(product.stock_quantity) < item.quantity) {
@@ -90,4 +96,12 @@ export async function closeCommandService(id, payments, actor) {
 
 export async function cancelSaleService(id, input, actor) {
   return cancelSale({ p_order_id: id, p_item_id: input.itemId, p_reason: input.reason, ...actorPayload(actor) });
+}
+
+export async function acceptCommandRequestService(requestId, variablePrices, actor) {
+  return acceptCommandRequest({
+    p_request_id: requestId,
+    p_variable_prices: variablePrices.map((item) => ({ item_id: item.itemId, unit_price: item.unitPrice })),
+    ...actorPayload(actor),
+  });
 }
