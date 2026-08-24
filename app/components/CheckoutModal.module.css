@@ -148,7 +148,8 @@
 .field label svg {
   color: #d64545;
 }
-.field input {
+.field input,
+.field select {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -160,7 +161,8 @@
 .field input::placeholder {
   color: #7d7069;
 }
-.field input:focus {
+.field input:focus,
+.field select:focus {
   outline: none;
   border-color: var(--gold);
   background: rgba(255, 255, 255, 0.07);
@@ -275,6 +277,7 @@
 .sucesso strong {
   color: #fff;
 }
+.field select option { color: #1a1210; }
 
 .confirm:disabled {
   opacity: 0.65;

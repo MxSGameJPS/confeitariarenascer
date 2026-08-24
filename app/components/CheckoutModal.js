@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "./CartContext";
 import { Icon } from "./Icons";
 import styles from "./CheckoutModal.module.css";
@@ -22,6 +22,15 @@ export default function CheckoutModal() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState(null);
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/store-settings").then(async (response) => {
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error?.message || "Não foi possível carregar as informações do delivery.");
+      setSettings(body.data);
+    }).catch((requestError) => setError(requestError.message));
+  }, []);
 
   if (!checkout) return null;
 
@@ -83,7 +92,7 @@ export default function CheckoutModal() {
           <div className={styles.sucesso}>
             <div className={styles.checkCircle}><Icon.Receipt width={40} height={40} /></div>
             <h3>Pedido #{order.order_number} recebido!</h3>
-            <p>O pagamento será feito na {fulfillmentType === "entrega" ? "entrega" : "retirada"}. Acompanhe abaixo cada etapa do preparo.</p>
+            <p>O pagamento será feito na {fulfillmentType === "entrega" ? "entrega" : "retirada"}. Previsão de {order.estimate_min} a {order.estimate_max} minutos.</p>
             <a className={styles.track} href={`/pedido/${order.tracking_token}`}>Acompanhar meu pedido</a>
             <button className={styles.secondary} onClick={close}>Continuar no site</button>
           </div>
@@ -92,10 +101,10 @@ export default function CheckoutModal() {
             <p className={styles.sectionLabel}>COMO VOCÊ QUER RECEBER?</p>
             <div className={styles.tipoGrid}>
               <button type="button" className={`${styles.tipoCard} ${fulfillmentType === "entrega" ? styles.tipoActive : ""}`} onClick={() => setFulfillmentType("entrega")}>
-                <Icon.Bike width={26} height={26} /><strong>Entrega</strong><span>Receba no endereço informado</span>
+                <Icon.Bike width={26} height={26} /><strong>Entrega</strong><span>{settings ? `${settings.deliveryEstimateMin}–${settings.deliveryEstimateMax} min` : "Receba no endereço informado"}</span>
               </button>
               <button type="button" className={`${styles.tipoCard} ${fulfillmentType === "retirada" ? styles.tipoActive : ""}`} onClick={() => setFulfillmentType("retirada")}>
-                <Icon.Store width={26} height={26} /><strong>Retirada</strong><span>Busque no balcão</span>
+                <Icon.Store width={26} height={26} /><strong>Retirada</strong><span>{settings ? `${settings.pickupEstimateMin}–${settings.pickupEstimateMax} min` : "Busque no balcão"}</span>
               </button>
             </div>
 
@@ -111,7 +120,7 @@ export default function CheckoutModal() {
                   <div className={styles.field}><label>NÚMERO</label><input name="number" required /></div>
                 </div>
                 <div className={styles.row}>
-                  <div className={styles.field}><label>BAIRRO</label><input name="neighborhood" autoComplete="address-level3" required /></div>
+                  <div className={styles.field}><label>BAIRRO / REGIÃO</label>{settings?.deliveryRegions?.length ? <select name="neighborhood" required defaultValue=""><option value="" disabled>Selecione</option>{settings.deliveryRegions.map((item) => <option key={item}>{item}</option>)}</select> : <input name="neighborhood" autoComplete="address-level3" required />}</div>
                   <div className={styles.field}><label>COMPLEMENTO</label><input name="complement" autoComplete="address-line2" /></div>
                 </div>
                 <div className={styles.field}><label>REFERÊNCIA</label><input name="reference" /></div>
@@ -135,9 +144,10 @@ export default function CheckoutModal() {
             </div>
 
             {paymentMethod === "dinheiro" && <div className={styles.field}><label>TROCO PARA (OPCIONAL)</label><input name="changeFor" inputMode="decimal" placeholder="Ex.: 100,00" /></div>}
-            <div className={styles.summary}><span>Subtotal do carrinho</span><strong>{brl(total)}</strong><small>A taxa de entrega, quando aplicável, será calculada pelo sistema.</small></div>
+            <div className={styles.summary}><span>Subtotal</span><strong>{brl(total)}</strong>{fulfillmentType === "entrega" && settings && <><span>Taxa de entrega</span><strong>{brl(settings.deliveryFee)}</strong></>}<span>Total previsto</span><strong>{brl(total + (fulfillmentType === "entrega" ? Number(settings?.deliveryFee || 0) : 0))}</strong>{settings && <small>Pedido mínimo: {brl(settings.minimumOrder)}.</small>}</div>
+            {settings && !settings.acceptsOrders && <p className={styles.error} role="alert">O delivery está pausado no momento.</p>}
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <button type="submit" className={styles.confirm} disabled={busy || items.length === 0}>{busy ? "Enviando pedido..." : "Enviar pedido"}</button>
+            <button type="submit" className={styles.confirm} disabled={busy || items.length === 0 || !settings?.acceptsOrders}>{busy ? "Enviando pedido..." : "Enviar pedido"}</button>
           </form>
         )}
       </div>
