@@ -12,11 +12,17 @@ function parseBoolean(value, fieldName) {
 }
 
 export function validateListProducts(searchParams) {
+  const channel = searchParams.get("channel") || "delivery";
+  if (!new Set(["delivery", "internal"]).has(channel)) {
+    throw new AppError("Parâmetro inválido: channel", { statusCode: 400, code: "VALIDATION_ERROR" });
+  }
   return {
     featured: parseBoolean(searchParams.get("featured"), "featured"),
+    channel,
   };
 }
 
 export function validateListCategories() {
   return {};
 }
+

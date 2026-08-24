@@ -14,9 +14,10 @@ export async function getStoreSettings() {
 
 export async function findActiveProductsByIds(productIds) {
   const params = new URLSearchParams({
-    select: "id,name,price,active,pricing_mode",
+    select: "id,name,price,active,pricing_mode,available_delivery",
     id: `in.(${productIds.join(",")})`,
     active: "eq.true",
+    available_delivery: "eq.true",
   });
 
   return supabaseServerRequest(`/rest/v1/products?${params}`);

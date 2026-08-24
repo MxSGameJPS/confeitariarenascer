@@ -11,7 +11,7 @@ export async function listCategoriesAdmin() {
 
 export async function listProductsAdmin() {
   const params = new URLSearchParams({
-    select: "id,category_id,name,slug,description,price,unit,image_path,featured,active,stock_control,stock_quantity,sort_order,pricing_mode,created_at,updated_at,category:categories(id,name,slug)",
+    select: "id,category_id,name,slug,description,price,unit,image_path,featured,active,stock_control,stock_quantity,sort_order,pricing_mode,available_delivery,available_internal,created_at,updated_at,category:categories(id,name,slug)",
     order: "sort_order.asc,name.asc",
   });
   return supabaseServerRequest(`/rest/v1/products?${params}`);
@@ -98,3 +98,4 @@ export async function uploadProductImage({ objectPath, file }) {
 
   return objectPath;
 }
+

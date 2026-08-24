@@ -68,6 +68,22 @@ export function validateCreateProduct(payload) {
 
   if (!Number.isFinite(stockQuantity) || stockQuantity < 0) invalid("Estoque inválido.");
 
+  const pricingMode = payload.pricingMode === "variable" ? "variable" : "fixed";
+  const availableDelivery = boolean(payload.availableDelivery, "availableDelivery", true);
+  const availableInternal = boolean(payload.availableInternal, "availableInternal", true);
+  const featured = boolean(payload.featured, "featured", false);
+  const active = boolean(payload.active, "active", true);
+
+  if (availableDelivery && pricingMode === "variable") {
+    invalid("Produtos pesados não podem entrar no cardápio de delivery.");
+  }
+  if (featured && !availableDelivery) {
+    invalid("Somente produtos do delivery podem ser exibidos em destaque no site.");
+  }
+  if (active && !availableDelivery && !availableInternal) {
+    invalid("Selecione ao menos um cardápio para o produto disponível.");
+  }
+
   return {
     categoryId,
     name: text(payload.name, "name", { required: true, max: 140 }),
@@ -75,15 +91,18 @@ export function validateCreateProduct(payload) {
     price: Number(price.toFixed(2)),
     unit: text(payload.unit, "unit", { max: 20 }) || "un",
     imagePath: text(payload.imagePath, "imagePath", { max: 500 }),
-    featured: boolean(payload.featured, "featured", false),
-    active: boolean(payload.active, "active", true),
+    featured,
+    active,
     stockControl: boolean(payload.stockControl, "stockControl", false),
     stockQuantity,
     sortOrder: integer(payload.sortOrder, "sortOrder", 0),
-    pricingMode: payload.pricingMode === "variable" ? "variable" : "fixed",
+    pricingMode,
+    availableDelivery,
+    availableInternal,
   };
 }
 
 export function validateUpdateProduct(payload) {
   return validateCreateProduct(payload);
 }
+

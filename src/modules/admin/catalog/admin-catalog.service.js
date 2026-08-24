@@ -59,7 +59,6 @@ export async function createCategoryService(input, actor) {
     slug,
     description: input.description,
     sort_order: input.sortOrder,
-    pricing_mode: input.pricingMode,
     active: input.active,
   });
 
@@ -81,7 +80,6 @@ export async function updateCategoryService(id, input, actor) {
     slug,
     description: input.description,
     sort_order: input.sortOrder,
-    pricing_mode: input.pricingMode,
     active: input.active,
   });
 
@@ -132,6 +130,9 @@ export async function createProductService(input, actor) {
     stock_control: input.stockControl,
     stock_quantity: input.stockQuantity,
     sort_order: input.sortOrder,
+    pricing_mode: input.pricingMode,
+    available_delivery: input.availableDelivery,
+    available_internal: input.availableInternal,
   });
 
   await writeAuditLog({
@@ -160,6 +161,9 @@ export async function updateProductService(id, input, actor) {
     stock_control: input.stockControl,
     stock_quantity: input.stockQuantity,
     sort_order: input.sortOrder,
+    pricing_mode: input.pricingMode,
+    available_delivery: input.availableDelivery,
+    available_internal: input.availableInternal,
   });
 
   if (!product) {
@@ -222,3 +226,4 @@ export async function uploadProductImageService(file, actor) {
 
   return { path: objectPath, url: getPublicStorageUrl(objectPath) };
 }
+

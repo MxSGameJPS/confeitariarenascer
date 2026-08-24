@@ -10,10 +10,10 @@ export async function listActiveCategories() {
   return supabaseServerRequest(`/rest/v1/categories?${params}`);
 }
 
-export async function listActiveProducts({ featured } = {}) {
+export async function listActiveProducts({ featured, channel = "delivery" } = {}) {
   const params = new URLSearchParams({
     select:
-      "id,category_id,name,slug,description,price,image_path,featured,unit,sort_order,pricing_mode,category:categories(id,name,slug)",
+      "id,category_id,name,slug,description,price,image_path,featured,unit,sort_order,pricing_mode,available_delivery,available_internal,category:categories(id,name,slug)",
     active: "eq.true",
     order: "sort_order.asc,name.asc",
   });
@@ -22,5 +22,8 @@ export async function listActiveProducts({ featured } = {}) {
     params.set("featured", `eq.${featured}`);
   }
 
+  params.set(channel === "internal" ? "available_internal" : "available_delivery", "eq.true");
+
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
+

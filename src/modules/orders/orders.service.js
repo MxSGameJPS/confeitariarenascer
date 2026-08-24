@@ -40,12 +40,9 @@ export async function createOrderService(input) {
   }
 
   let subtotalCents = 0;
-  let hasVariablePrice = false;
   const normalizedItems = input.items.map((item) => {
     const product = productsById.get(item.productId);
-    const variable = product.pricing_mode === "variable";
-    const unitPriceCents = variable ? 0 : toCents(product.price);
-    hasVariablePrice ||= variable;
+    const unitPriceCents = toCents(product.price);
     const itemSubtotalCents = unitPriceCents * item.quantity;
     subtotalCents += itemSubtotalCents;
 
@@ -55,12 +52,12 @@ export async function createOrderService(input) {
       unit_price: fromCents(unitPriceCents),
       quantity: item.quantity,
       subtotal: fromCents(itemSubtotalCents),
-      pricing_mode: product.pricing_mode,
+      pricing_mode: "fixed",
     };
   });
 
   const minimumOrderCents = toCents(settings.minimum_order || 0);
-  if (!hasVariablePrice && subtotalCents < minimumOrderCents) {
+  if (subtotalCents < minimumOrderCents) {
     throw new AppError(
       `Pedido mínimo de R$ ${fromCents(minimumOrderCents).toFixed(2).replace(".", ",")}.`,
       {

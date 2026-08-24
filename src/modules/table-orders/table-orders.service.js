@@ -6,7 +6,7 @@ const amount = (value) => Number((value / 100).toFixed(2));
 export async function getTableMenuService(token) {
   const table = await findPublicTable(token);
   if (!table || !table.active || !table.command_enabled) throw new AppError("Esta mesa não está recebendo pedidos no momento.", { statusCode: 404, code: "TABLE_UNAVAILABLE" });
-  return { table: { tableNumber: table.table_number, seats: table.seats }, products: await getProductsService({}) };
+  return { table: { tableNumber: table.table_number, seats: table.seats }, products: await getProductsService({ channel: "internal" }) };
 }
 export async function createTableOrderService(token, input) {
   const table = await findPublicTable(token);
@@ -23,3 +23,4 @@ export async function createTableOrderService(token, input) {
   });
   return createTableRequest({ p_table_token: token, p_customer_name: input.customerName, p_notes: input.notes, p_items: items });
 }
+
