@@ -6,17 +6,18 @@ import styles from "./StaffShell.module.css";
 
 const NAV_ITEMS = [
   { href: "/operacao", label: "Visão geral" },
-  { href: "/operacao/delivery", label: "Delivery", soon: true },
-  { href: "/operacao/comandas", label: "Comandas", soon: true },
-  { href: "/operacao/caixa", label: "Frente de caixa", soon: true },
+  { href: "/operacao/delivery", label: "Delivery", permission: "attendant" },
+  { href: "/operacao/comandas", label: "Comandas", permission: "attendant" },
+  { href: "/operacao/caixa", label: "Frente de caixa" },
 ];
 
 export default function StaffShell({ session, children }) {
   const pathname = usePathname();
   const router = useRouter();
+  const allowed = NAV_ITEMS.filter((item) => item.permission !== "attendant" || session.role === ROLES.ATENDENTE);
   const items = session.role === ROLES.GERENTE
-    ? [...NAV_ITEMS, { href: "/operacao/funcionarios", label: "Funcionários" }]
-    : NAV_ITEMS;
+    ? [...allowed, { href: "/operacao/funcionarios", label: "Funcionários" }]
+    : allowed;
 
   async function logout() {
     await fetch("/api/staff/auth/logout", { method: "POST" });
@@ -35,9 +36,6 @@ export default function StaffShell({ session, children }) {
         <nav className={styles.nav}>
           {items.map((item) => {
             const active = pathname === item.href;
-            if (item.soon) {
-              return <span key={item.href} className={active ? styles.active : ""}>{item.label}<em>em breve</em></span>;
-            }
             return <a key={item.href} href={item.href} className={active ? styles.active : ""}>{item.label}</a>;
           })}
         </nav>
