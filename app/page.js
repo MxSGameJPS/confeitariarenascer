@@ -1,17 +1,18 @@
 import Header from "./components/Header";
 import ScrollReveal from "./components/ScrollReveal";
 import Menu from "./components/Menu";
+import FeaturedProducts from "./components/FeaturedProducts";
 import { Icon } from "./components/Icons";
-import { destaques, HERO_IMG } from "./data/produtos";
 import styles from "./page.module.css";
+
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=2000&q=85";
 
 const WHATSAPP =
   "https://wa.me/5551000000000?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20pedido%20na%20Padaria%20Renascer.";
 const INSTAGRAM = "https://www.instagram.com/padaria_renascerivoti/";
 const MAPS =
   "https://www.google.com/maps/place/Padaria+Renascer/@-29.6079871,-51.1785649,17z";
-
-const destIcons = { "d-morango": "Strawberry", "d-bolo": "Cake", "d-paoqueijo": "Bread" };
 
 const passos = [
   {
@@ -143,36 +144,7 @@ export default function Home() {
         </section>
 
         {/* ---------------- DESTAQUES ---------------- */}
-        <section id="destaques" className={styles.destaques}>
-          <div className={`${styles.sectionHead} reveal`}>
-            <span className={styles.sectionTagLight}>Os queridinhos</span>
-            <h2>Os favoritos da casa</h2>
-          </div>
-          <div className={styles.destGrid}>
-            {destaques.map((d, i) => {
-              const DIcon = Icon[destIcons[d.id]] || Icon.Cake;
-              return (
-                <article
-                  key={d.id}
-                  className={`${styles.destCard} reveal`}
-                  style={{ transitionDelay: `${i * 0.1}s` }}
-                >
-                  <div className={styles.destImg}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={d.img} alt={d.titulo} loading="lazy" />
-                    <span className={styles.destIcon}>
-                      <DIcon width={22} height={22} />
-                    </span>
-                  </div>
-                  <div className={styles.destBody}>
-                    <h3>{d.titulo}</h3>
-                    <p>{d.texto}</p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        <FeaturedProducts />
 
         {/* ---------------- COMO PEDIR ---------------- */}
         <section className={styles.passos}>

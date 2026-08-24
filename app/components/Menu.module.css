@@ -3,6 +3,41 @@
   margin: 0 auto;
 }
 
+.catalogState {
+  width: min(100%, 720px);
+  min-height: 180px;
+  margin: 0 auto;
+  padding: 2.5rem;
+  border: 1px solid rgba(111, 71, 38, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.58);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.catalogState strong {
+  font-family: var(--font-title);
+  font-size: 1.35rem;
+  color: var(--brown-800);
+}
+
+.catalogState button {
+  margin-top: 0.8rem;
+  padding: 0.65rem 1.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brown-800);
+  color: var(--cream);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .catBlock {
   margin-bottom: clamp(3.5rem, 7vw, 5.5rem);
 }
@@ -72,6 +107,17 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--brown-600);
+  background:
+    radial-gradient(circle at 50% 25%, rgba(240, 198, 116, 0.45), transparent 42%),
+    var(--cream);
 }
 .card:hover .imgWrap img {
   transform: scale(1.06);
