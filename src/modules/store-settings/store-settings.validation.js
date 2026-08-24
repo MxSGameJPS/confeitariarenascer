@@ -31,13 +31,20 @@ export function validateDeliverySettings(payload) {
   const pickupMax = minutes(payload.pickupEstimateMax, "Estimativa máxima de retirada");
   if (deliveryMax < deliveryMin || pickupMax < pickupMin) invalid("A estimativa máxima deve ser maior ou igual à mínima.");
 
-  if (!Array.isArray(payload.deliveryRegions) || payload.deliveryRegions.length > 100) invalid("Regiões atendidas inválidas.");
-  const deliveryRegions = [...new Set(payload.deliveryRegions.map((region) => {
-    if (typeof region !== "string") invalid("Região atendida inválida.");
-    const normalized = region.trim();
-    if (normalized.length < 2 || normalized.length > 80) invalid("Cada região deve ter entre 2 e 80 caracteres.");
-    return normalized;
-  }))];
+  if (!Array.isArray(payload.deliveryAreas) || payload.deliveryAreas.length > 200) invalid("Áreas atendidas inválidas.");
+  const keys = new Set();
+  const deliveryAreas = payload.deliveryAreas.map((area) => {
+    if (!area || typeof area !== "object" || Array.isArray(area)) invalid("Área atendida inválida.");
+    const city = typeof area.city === "string" ? area.city.trim() : "";
+    const entireCity = area.entireCity === true;
+    const point = entireCity ? null : typeof area.point === "string" ? area.point.trim() : "";
+    if (city.length < 2 || city.length > 80) invalid("Informe uma cidade válida.");
+    if (!entireCity && (point.length < 2 || point.length > 100)) invalid("Informe o bairro ou ponto atendido.");
+    const key = `${city.toLowerCase()}|${entireCity ? "*" : point.toLowerCase()}`;
+    if (keys.has(key)) invalid("Esta área de entrega já foi cadastrada.");
+    keys.add(key);
+    return { city, point, entireCity };
+  });
 
   if (!Array.isArray(payload.businessHours) || (payload.businessHours.length !== 0 && payload.businessHours.length !== 7)) {
     invalid("Informe os sete dias da semana ou deixe os horários sem configuração.");
@@ -59,7 +66,7 @@ export function validateDeliverySettings(payload) {
     pickupEstimateMin: pickupMin,
     pickupEstimateMax: pickupMax,
     whatsapp: typeof payload.whatsapp === "string" ? payload.whatsapp.trim().slice(0, 30) || null : null,
-    deliveryRegions,
+    deliveryAreas,
     businessHours,
   };
 }

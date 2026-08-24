@@ -23,6 +23,7 @@ export default function CheckoutModal() {
   const [error, setError] = useState("");
   const [order, setOrder] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [selectedCity, setSelectedCity] = useState("");
 
   useEffect(() => {
     fetch("/api/store-settings").then(async (response) => {
@@ -53,6 +54,7 @@ export default function CheckoutModal() {
       paymentMethod,
       changeFor: paymentMethod === "dinheiro" ? form.get("changeFor") || null : null,
       address: fulfillmentType === "entrega" ? {
+        city: form.get("city"),
         street: form.get("street"),
         number: form.get("number"),
         neighborhood: form.get("neighborhood"),
@@ -115,12 +117,15 @@ export default function CheckoutModal() {
 
             {fulfillmentType === "entrega" && (
               <>
+                {settings?.deliveryAreas?.length ? <div className={styles.row}>
+                  <div className={styles.field}><label>CIDADE</label><select name="city" value={selectedCity} onChange={(event) => setSelectedCity(event.target.value)} required><option value="" disabled>Selecione</option>{[...new Set(settings.deliveryAreas.map((item) => item.city))].map((city) => <option key={city}>{city}</option>)}</select></div>
+                  <div className={styles.field}><label>BAIRRO / PONTO ATENDIDO</label><select name="neighborhood" required defaultValue="" key={selectedCity}><option value="" disabled>Selecione</option>{settings.deliveryAreas.filter((item) => item.city === selectedCity).map((item) => <option key={item.point || "all"} value={item.entireCity ? "Toda a cidade" : item.point}>{item.entireCity ? "Toda a cidade" : item.point}</option>)}</select></div>
+                </div> : <div className={styles.row}><div className={styles.field}><label>CIDADE</label><input name="city" autoComplete="address-level2" required /></div><div className={styles.field}><label>BAIRRO / REGIÃO</label><input name="neighborhood" autoComplete="address-level3" required /></div></div>}
                 <div className={styles.row}>
                   <div className={styles.field} style={{ flex: 2 }}><label><Icon.Pin width={14} height={14} /> RUA</label><input name="street" autoComplete="address-line1" required /></div>
                   <div className={styles.field}><label>NÚMERO</label><input name="number" required /></div>
                 </div>
                 <div className={styles.row}>
-                  <div className={styles.field}><label>BAIRRO / REGIÃO</label>{settings?.deliveryRegions?.length ? <select name="neighborhood" required defaultValue=""><option value="" disabled>Selecione</option>{settings.deliveryRegions.map((item) => <option key={item}>{item}</option>)}</select> : <input name="neighborhood" autoComplete="address-level3" required />}</div>
                   <div className={styles.field}><label>COMPLEMENTO</label><input name="complement" autoComplete="address-line2" /></div>
                 </div>
                 <div className={styles.field}><label>REFERÊNCIA</label><input name="reference" /></div>

@@ -52,11 +52,15 @@ export async function createOrderService(input) {
     });
   }
 
-  if (input.fulfillmentType === "entrega" && settings.delivery_regions?.length) {
-    const requestedRegion = normalizeRegion(input.address?.neighborhood);
-    const allowed = settings.delivery_regions.some((region) => normalizeRegion(region) === requestedRegion);
+  if (input.fulfillmentType === "entrega" && settings.delivery_areas?.length) {
+    const requestedCity = normalizeRegion(input.address?.city);
+    const requestedPoint = normalizeRegion(input.address?.neighborhood);
+    const allowed = settings.delivery_areas.some((area) =>
+      normalizeRegion(area.city) === requestedCity &&
+      (area.entireCity === true || normalizeRegion(area.point) === requestedPoint)
+    );
     if (!allowed) {
-      throw new AppError("Este bairro ainda não faz parte da nossa área de entrega.", {
+      throw new AppError("Este endereço ainda não faz parte da nossa área de entrega.", {
         statusCode: 409,
         code: "DELIVERY_REGION_UNAVAILABLE",
       });

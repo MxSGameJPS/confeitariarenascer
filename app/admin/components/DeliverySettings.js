@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import styles from "./DeliverySettings.module.css";
+import areaStyles from "./DeliveryAreas.module.css";
 
 const DAYS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 const defaultHours = DAYS.map((_, day) => ({ day, enabled: day > 0, opens: "08:00", closes: "18:00" }));
 
 export default function DeliverySettings() {
   const [settings, setSettings] = useState(null);
-  const [region, setRegion] = useState("");
+  const [area, setArea] = useState({ city: "", point: "", entireCity: false });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,11 +27,12 @@ export default function DeliverySettings() {
   function changeHour(day, name, value) {
     change("businessHours", settings.businessHours.map((entry) => entry.day === day ? { ...entry, [name]: value } : entry));
   }
-  function addRegion() {
-    const value = region.trim();
-    if (!value || settings.deliveryRegions.some((item) => item.toLowerCase() === value.toLowerCase())) return;
-    change("deliveryRegions", [...settings.deliveryRegions, value]);
-    setRegion("");
+  function addArea() {
+    const city = area.city.trim();
+    const point = area.entireCity ? null : area.point.trim();
+    if (!city || (!area.entireCity && !point)) return;
+    change("deliveryAreas", [...settings.deliveryAreas, { city, point, entireCity: area.entireCity }]);
+    setArea({ city: "", point: "", entireCity: false });
   }
 
   async function save(event) {
@@ -70,9 +72,14 @@ export default function DeliverySettings() {
       </div>
     </section>
 
-    <section className={styles.panel}><div className={styles.panelHead}><h2>Regiões atendidas</h2><p>O cliente escolherá uma destas opções no endereço. Sem regiões cadastradas, o bairro fica livre.</p></div>
-      <div className={styles.regionEntry}><input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Ex.: Centro" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRegion(); } }} /><button type="button" onClick={addRegion}>Adicionar região</button></div>
-      <div className={styles.chips}>{settings.deliveryRegions.map((item) => <span key={item}>{item}<button type="button" aria-label={`Remover ${item}`} onClick={() => change("deliveryRegions", settings.deliveryRegions.filter((value) => value !== item))}>×</button></span>)}</div>
+    <section className={styles.panel}><div className={styles.panelHead}><h2>Cidades e pontos atendidos</h2><p>Cadastre uma cidade inteira ou somente os bairros e pontos onde a entrega está disponível.</p></div>
+      <div className={areaStyles.areaEntry}>
+        <label>Cidade<input value={area.city} onChange={(e) => setArea((current) => ({ ...current, city: e.target.value }))} placeholder="Ex.: Novo Hamburgo" /></label>
+        <label>Bairro ou ponto<input value={area.point} disabled={area.entireCity} onChange={(e) => setArea((current) => ({ ...current, point: e.target.value }))} placeholder="Ex.: Canudos" /></label>
+        <label className={areaStyles.entireCity}><input type="checkbox" checked={area.entireCity} onChange={(e) => setArea((current) => ({ ...current, entireCity: e.target.checked, point: "" }))} />Atender toda a cidade</label>
+        <button type="button" onClick={addArea}>Adicionar área</button>
+      </div>
+      <div className={areaStyles.areas}>{settings.deliveryAreas.map((item, index) => <article key={`${item.city}-${item.point || "all"}`}><div><strong>{item.city}</strong><span>{item.entireCity ? "Toda a cidade" : item.point}</span></div><button type="button" aria-label={`Remover ${item.city}`} onClick={() => change("deliveryAreas", settings.deliveryAreas.filter((_, itemIndex) => itemIndex !== index))}>Remover</button></article>)}</div>
     </section>
 
     <section className={styles.panel}><div className={styles.panelHead}><h2>Horários de atendimento</h2><p>Pedidos fora dos horários ativos serão recusados automaticamente.</p></div>

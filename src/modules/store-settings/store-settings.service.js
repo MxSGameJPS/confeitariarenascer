@@ -15,7 +15,7 @@ function map(settings) {
     pickupEstimateMax: settings.pickup_estimate_max,
     whatsapp: settings.whatsapp,
     businessHours: settings.business_hours ?? [],
-    deliveryRegions: settings.delivery_regions ?? [],
+    deliveryAreas: settings.delivery_areas ?? [],
     timezone: settings.store_timezone,
     updatedAt: settings.updated_at,
   };
@@ -38,7 +38,7 @@ export async function updateDeliverySettingsService(input, actor) {
     pickup_estimate_max: input.pickupEstimateMax,
     whatsapp: input.whatsapp,
     business_hours: input.businessHours,
-    delivery_regions: input.deliveryRegions,
+    delivery_areas: input.deliveryAreas,
   });
   if (!settings) throw new AppError("Configuração da loja não encontrada.", { statusCode: 404, code: "STORE_NOT_CONFIGURED" });
   await writeSettingsAudit(actor.id, settings);

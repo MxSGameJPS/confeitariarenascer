@@ -103,6 +103,7 @@ export function validateCreateOrder(payload) {
     }
 
     address = {
+      city: requiredString(source.city, "address.city", 100),
       street: requiredString(source.street, "address.street", 160),
       number: requiredString(source.number, "address.number", 30),
       neighborhood: requiredString(source.neighborhood, "address.neighborhood", 100),
