@@ -24,14 +24,18 @@ function slugify(value) {
 
 async function uniqueSlug(name, finder, currentId = null) {
   const base = slugify(name);
-  let candidate = base;
-  let index = 2;
+  const maximumAttempts = 100;
 
-  while (true) {
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    const candidate = attempt === 1 ? base : `${base}-${attempt}`;
     const existing = await finder(candidate);
     if (!existing || existing.id === currentId) return candidate;
-    candidate = `${base}-${index++}`;
   }
+
+  throw new AppError("Não foi possível gerar um identificador único para este item.", {
+    statusCode: 409,
+    code: "SLUG_LIMIT_REACHED",
+  });
 }
 
 function mapProduct(product) {
