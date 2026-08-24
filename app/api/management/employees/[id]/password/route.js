@@ -1,0 +1,20 @@
+import { resetEmployeePasswordController } from "@/src/modules/employees/employees.controller";
+import {
+  validateEmployeeId,
+  validateResetEmployeePassword,
+} from "@/src/modules/employees/employees.validation";
+import { PERMISSIONS } from "@/src/config/permissions";
+import { requirePermissionSession } from "@/src/shared/auth/principal-session";
+import { handleApiError } from "@/src/shared/http/api-response";
+
+export async function POST(request, { params }) {
+  try {
+    const actor = await requirePermissionSession(PERMISSIONS.EMPLOYEES_RESET_PASSWORD);
+    const { id } = await params;
+    const employeeId = validateEmployeeId(id);
+    const input = validateResetEmployeePassword(await request.json());
+    return await resetEmployeePasswordController(employeeId, input, actor);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
