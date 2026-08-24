@@ -1,0 +1,123 @@
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.catBlock {
+  margin-bottom: 3.5rem;
+}
+
+.catHead {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+.catIcon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--brown-800), var(--brown-600));
+  color: var(--gold-light);
+}
+.catHead h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.15rem;
+}
+.catHead p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.4rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(58, 36, 24, 0.08);
+  border: 1px solid rgba(111, 71, 38, 0.08);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 44px rgba(58, 36, 24, 0.16);
+}
+
+.imgWrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--cream-2);
+}
+.imgWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.card:hover .imgWrap img {
+  transform: scale(1.06);
+}
+
+.body {
+  padding: 1.1rem 1.2rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.body h4 {
+  font-size: 1.15rem;
+  margin-bottom: 0.3rem;
+}
+.body p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  flex: 1;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.preco {
+  font-family: var(--font-title);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--brown-700);
+}
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: linear-gradient(135deg, var(--gold), #b8862f);
+  color: var(--brown-950);
+  border: none;
+  padding: 0.55rem 1rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 16px rgba(217, 164, 65, 0.35);
+}
+.add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(217, 164, 65, 0.5);
+}
+.add:active {
+  transform: scale(0.96);
+}
