@@ -6,6 +6,7 @@ import styles from "./AdminShell.module.css";
 const NAV = [
   { href: "/admin", label: "Cardápio" },
   { href: "/admin/funcionarios", label: "Funcionários" },
+  { href: "/admin/administradores", label: "Superadmins" },
 ];
 
 export default function AdminShell({ session, children }) {
