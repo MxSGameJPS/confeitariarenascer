@@ -3,7 +3,7 @@ import { supabaseServerRequest } from "@/src/config/supabase/server";
 export async function getStoreSettings() {
   const params = new URLSearchParams({
     select:
-      "accepts_orders,delivery_fee,minimum_order,delivery_estimate_min,delivery_estimate_max,pickup_estimate_min,pickup_estimate_max",
+      "accepts_orders,delivery_fee,minimum_order,delivery_estimate_min,delivery_estimate_max,pickup_estimate_min,pickup_estimate_max,business_hours,delivery_regions,store_timezone",
     id: "eq.1",
     limit: "1",
   });

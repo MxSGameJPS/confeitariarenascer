@@ -9,6 +9,25 @@ import { AppError } from "@/src/shared/errors/app-error";
 const toCents = (value) => Math.round(Number(value) * 100);
 const fromCents = (value) => Number((value / 100).toFixed(2));
 
+const normalizeRegion = (value) =>
+  String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+function storeIsOpen(settings) {
+  if (!Array.isArray(settings.business_hours) || settings.business_hours.length !== 7) return true;
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: settings.store_timezone || "America/Sao_Paulo",
+    weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  const dayIndex = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[parts.weekday];
+  const schedule = settings.business_hours.find((entry) => entry.day === dayIndex);
+  if (!schedule?.enabled) return false;
+  const current = `${parts.hour === "24" ? "00" : parts.hour}:${parts.minute}`;
+  return schedule.opens <= schedule.closes
+    ? current >= schedule.opens && current < schedule.closes
+    : current >= schedule.opens || current < schedule.closes;
+}
+
 export async function createOrderService(input) {
   const settings = await getStoreSettings();
 
@@ -24,6 +43,24 @@ export async function createOrderService(input) {
       statusCode: 503,
       code: "ORDERS_DISABLED",
     });
+  }
+
+  if (!storeIsOpen(settings)) {
+    throw new AppError("A loja está fora do horário de atendimento.", {
+      statusCode: 409,
+      code: "STORE_CLOSED",
+    });
+  }
+
+  if (input.fulfillmentType === "entrega" && settings.delivery_regions?.length) {
+    const requestedRegion = normalizeRegion(input.address?.neighborhood);
+    const allowed = settings.delivery_regions.some((region) => normalizeRegion(region) === requestedRegion);
+    if (!allowed) {
+      throw new AppError("Este bairro ainda não faz parte da nossa área de entrega.", {
+        statusCode: 409,
+        code: "DELIVERY_REGION_UNAVAILABLE",
+      });
+    }
   }
 
   const uniqueProductIds = [...new Set(input.items.map((item) => item.productId))];
@@ -98,6 +135,8 @@ export async function createOrderService(input) {
     subtotal: fromCents(subtotalCents),
     delivery_fee: fromCents(deliveryFeeCents),
     total: fromCents(totalCents),
+    estimate_min: input.fulfillmentType === "entrega" ? settings.delivery_estimate_min : settings.pickup_estimate_min,
+    estimate_max: input.fulfillmentType === "entrega" ? settings.delivery_estimate_max : settings.pickup_estimate_max,
   };
 }
 
