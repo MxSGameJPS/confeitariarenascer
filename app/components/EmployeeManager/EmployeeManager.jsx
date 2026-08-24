@@ -15,7 +15,7 @@ function roleLabel(role) {
   return role === "gerente" ? "Gerente" : "Atendente";
 }
 
-export default function EmployeeManager() {
+export default function EmployeeManager({ surface = "admin" }) {
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -24,12 +24,15 @@ export default function EmployeeManager() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const request = useCallback(async (url, options) => {
-    const response = await fetch(url, options);
+  const request = useCallback(async (url, options = {}) => {
+    const headers = new Headers(options.headers || {});
+    headers.set("x-renascer-surface", surface);
+
+    const response = await fetch(url, { ...options, headers });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body?.error?.message || "Não foi possível concluir a operação.");
     return body.data;
-  }, []);
+  }, [surface]);
 
   const load = useCallback(async () => {
     try {
