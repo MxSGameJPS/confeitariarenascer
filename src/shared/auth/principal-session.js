@@ -6,26 +6,30 @@ import { getStaffSessionService } from "@/src/modules/staff-auth/staff-auth.serv
 import { AppError } from "@/src/shared/errors/app-error";
 import { hasPermission } from "@/src/config/permissions";
 
-export async function getPrincipalSession() {
-  const cookieStore = await cookies();
-
-  const adminToken = cookieStore.get(ACCESS_COOKIE)?.value;
-  if (adminToken) {
-    const admin = await getAdminSessionService(adminToken);
-    if (admin) return { ...admin, kind: "admin" };
-  }
-
-  const staffToken = cookieStore.get(STAFF_SESSION_COOKIE)?.value;
-  if (staffToken) {
-    const staff = await getStaffSessionService(staffToken, { touch: true });
-    if (staff) return staff;
-  }
-
-  return null;
+async function getAdmin(cookieStore) {
+  const token = cookieStore.get(ACCESS_COOKIE)?.value;
+  if (!token) return null;
+  const admin = await getAdminSessionService(token);
+  return admin ? { ...admin, kind: "admin" } : null;
 }
 
-export async function requirePermissionSession(permission) {
-  const principal = await getPrincipalSession();
+async function getStaff(cookieStore) {
+  const token = cookieStore.get(STAFF_SESSION_COOKIE)?.value;
+  if (!token) return null;
+  return getStaffSessionService(token, { touch: true });
+}
+
+export async function getPrincipalSession(preferredKind = null) {
+  const cookieStore = await cookies();
+
+  if (preferredKind === "admin") return getAdmin(cookieStore);
+  if (preferredKind === "staff") return getStaff(cookieStore);
+
+  return (await getAdmin(cookieStore)) ?? (await getStaff(cookieStore));
+}
+
+export async function requirePermissionSession(permission, preferredKind = null) {
+  const principal = await getPrincipalSession(preferredKind);
 
   if (!principal) {
     throw new AppError("Sessão inválida ou expirada.", {
