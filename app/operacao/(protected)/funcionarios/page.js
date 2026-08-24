@@ -6,5 +6,5 @@ import { ROLES } from "@/src/config/permissions";
 export default async function StaffEmployeesPage() {
   const session = await requireStaffSession();
   if (session.role !== ROLES.GERENTE) redirect("/operacao");
-  return <EmployeeManager />;
+  return <EmployeeManager surface="staff" />;
 }
