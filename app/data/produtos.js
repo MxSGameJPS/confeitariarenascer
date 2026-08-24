@@ -1,4 +1,4 @@
-// Imagens públicas do Unsplash (uso livre). Prévia demonstrativa.
+// Imagens públicas do Unsplash usadas no catálogo visual inicial.
 export const categorias = [
   {
     id: "bolos",
@@ -144,3 +144,4 @@ export const destaques = [
 
 export const HERO_IMG =
   "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=1600&q=70";
+

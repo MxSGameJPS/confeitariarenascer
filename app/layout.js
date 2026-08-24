@@ -3,7 +3,6 @@ import "./globals.css";
 import { CartProvider } from "./components/CartContext";
 import CartDrawer from "./components/CartDrawer";
 import CheckoutModal from "./components/CheckoutModal";
-import PreviewBanner from "./components/PreviewBanner";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -44,7 +43,6 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR" className={`${playfair.variable} ${poppins.variable}`}>
       <body>
         <CartProvider>
-          <PreviewBanner />
           {children}
           <CartDrawer />
           <CheckoutModal />
@@ -53,3 +51,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+

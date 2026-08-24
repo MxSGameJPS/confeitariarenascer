@@ -300,8 +300,7 @@ export default function Home() {
           </a>
         </nav>
         <p className={styles.footerNote}>
-          Prévia de site desenvolvida como demonstração ·{" "}
-          {new Date().getFullYear()}
+          Padaria & Confeitaria Renascer · Ivoti / RS · {new Date().getFullYear()}
         </p>
       </footer>
 
@@ -318,3 +317,4 @@ export default function Home() {
     </>
   );
 }
+

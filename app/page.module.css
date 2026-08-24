@@ -67,7 +67,7 @@
 /* ---------- Section head ---------- */
 .sectionHead {
   text-align: center;
-  max-width: 640px;
+  max-width: 720px;
   margin: 0 auto 3.5rem;
 }
 .sectionHead h2 {
@@ -353,7 +353,7 @@
 
 /* ---------- CARDÁPIO ---------- */
 .cardapio {
-  padding: clamp(4rem, 10vw, 8rem) clamp(1.5rem, 6vw, 5rem);
+  padding: clamp(4.5rem, 9vw, 7.5rem) clamp(1.25rem, 5vw, 4rem);
   background: var(--cream-2);
 }
 .cardGrid {
@@ -716,3 +716,4 @@
     order: -1;
   }
 }
+

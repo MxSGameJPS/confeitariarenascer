@@ -55,11 +55,10 @@ export default function CheckoutModal() {
             <div className={styles.checkCircle}>
               <Icon.Whatsapp width={40} height={40} />
             </div>
-            <h3>Pedido registrado!</h3>
+            <h3>Pedido montado!</h3>
             <p>
-              Esta é uma <strong>prévia demonstrativa</strong>. Em um site real,
-              seu pedido de <strong>{brl(total)}</strong> seria enviado
-              automaticamente para o WhatsApp da padaria.
+              Seus itens somam <strong>{brl(total)}</strong>. Confira o carrinho e
+              os dados informados antes de concluir o atendimento.
             </p>
             <button
               className={styles.confirm}
@@ -166,3 +165,4 @@ export default function CheckoutModal() {
     </div>
   );
 }
+
