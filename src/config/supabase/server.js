@@ -27,7 +27,6 @@ export async function supabaseServerRequest(
     cache,
     headers: {
       apikey: secretKey,
-      Authorization: `Bearer ${secretKey}`,
       ...(body !== undefined && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...(prefer ? { Prefer: prefer } : {}),
       ...headers,
