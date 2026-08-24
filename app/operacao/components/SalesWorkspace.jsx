@@ -45,7 +45,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
       .then((body) => { if (active && body.data) { setSales(body.data); knownPending.current = new Set(body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id))); } });
     return () => { active = false; };
   }, [channel]);
-  useEffect(() => { if (channel !== "comanda") return; const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); }, [channel, load]);
+  useEffect(() => { if (channel !== "comanda" && channel !== "delivery") return; const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); }, [channel, load]);
   useEffect(() => { if (channel !== "comanda") return; const timer = window.setTimeout(() => { const enabled = window.localStorage.getItem("renascer.commandSound") === "on"; setSoundEnabled(enabled); soundEnabledRef.current = enabled; }, 0); return () => window.clearTimeout(timer); }, [channel]);
   useEffect(() => {
     if (channel === "delivery") return;
@@ -149,6 +149,26 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
     await action(`/api/command-requests/${request.id}/accept`, { variablePrices: prices });
   }
 
+  async function acceptDelivery(sale) {
+    const prices = [];
+    for (const item of sale.items.filter((entry) => entry.pricing_mode === "variable" && entry.status === "ativo")) {
+      const value = window.prompt(`Informe o valor unitário após pesar “${item.product_name}”:`, "");
+      const parsed = Number(String(value ?? "").replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed <= 0) { setMessage("A pesagem precisa de um valor válido."); return; }
+      prices.push({ itemId: item.id, unitPrice: Number(parsed.toFixed(2)) });
+    }
+    await action(`/api/sales/${sale.id}/accept`, { variablePrices: prices });
+  }
+
+  function deliveryNextAction(sale) {
+    if (sale.status === "confirmado") return { status: "em_preparo", label: "Iniciar preparo" };
+    if (sale.status === "em_preparo") return { status: "pronto", label: "Marcar como pronto" };
+    if (sale.status === "pronto" && sale.fulfillment_type === "entrega") return { status: "saiu_entrega", label: "Saiu para entrega" };
+    if (sale.status === "pronto") return { status: "concluido", label: "Entregar e receber" };
+    if (sale.status === "saiu_entrega") return { status: "concluido", label: "Concluir e receber" };
+    return null;
+  }
+
   function toggleSound() {
     const enabled = !soundEnabled;
     setSoundEnabled(enabled); soundEnabledRef.current = enabled;
@@ -232,11 +252,12 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
         {sales.map((sale) => (
           <article key={sale.id}>
             <div className={styles.saleHead}><div><small>#{sale.order_number}</small><strong>{sale.command_label || sale.customer?.name || LABELS[sale.channel]}</strong></div><div><b>{money.format(sale.total)}</b><span data-status={sale.status}>{sale.status.replaceAll("_", " ")}</span></div></div>
+            {channel === "delivery" && <div className={styles.deliveryInfo}><span>{sale.fulfillment_type === "entrega" ? `${sale.address_street}, ${sale.address_number} · ${sale.address_neighborhood}` : "Retirada no balcão"}</span><span>{sale.customer?.phone} · {sale.payment_method}{sale.change_for ? ` · troco para ${money.format(sale.change_for)}` : ""}</span>{sale.notes && <small>{sale.notes}</small>}</div>}
             <ul>{sale.items.map((item) => <li key={item.id} className={item.status === "cancelado" ? styles.canceled : ""}><span>{item.quantity}× {item.product_name}</span><span>{money.format(item.subtotal)}{canCancel && item.status === "ativo" && sale.status !== "cancelado" && <button type="button" onClick={() => cancel(sale, item.id)}>Cancelar item</button>}</span></li>)}</ul>
             {channel === "comanda" && (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => <div className={styles.request} key={request.id}><div><strong>Novo pedido do QR</strong><span>{request.customer_name || (sale.table ? `Mesa ${sale.table.table_number}` : "Cliente da mesa")}</span><small>{request.notes || "Sem observações"}</small></div><button disabled={busy} onClick={() => acceptRequest(sale, request)}>Aceitar pedido</button></div>)}
             <footer>
               <small>{new Date(sale.created_at).toLocaleString("pt-BR")}{sale.responsible_employee ? ` · ${sale.responsible_employee.full_name}` : ""}</small>
-              <div>{channel === "delivery" && sale.status === "pendente" && <button disabled={busy} onClick={() => action(`/api/sales/${sale.id}/accept`)}>Aceitar pedido</button>}{channel === "comanda" && sale.status === "aberto" && <button disabled={busy} onClick={() => closeCommand(sale)}>Receber e fechar</button>}{canCancel && sale.status !== "cancelado" && <button className={styles.danger} disabled={busy} onClick={() => cancel(sale)}>Cancelar venda</button>}</div>
+              <div>{channel === "delivery" && sale.status === "pendente" && <button disabled={busy} onClick={() => acceptDelivery(sale)}>Aceitar pedido</button>}{channel === "delivery" && deliveryNextAction(sale) && <button disabled={busy} onClick={() => action(`/api/sales/${sale.id}/status`, { status: deliveryNextAction(sale).status })}>{deliveryNextAction(sale).label}</button>}{channel === "comanda" && sale.status === "aberto" && <button disabled={busy} onClick={() => closeCommand(sale)}>Receber e fechar</button>}{canCancel && sale.status !== "cancelado" && <button className={styles.danger} disabled={busy} onClick={() => cancel(sale)}>Cancelar venda</button>}</div>
             </footer>
           </article>
         ))}
@@ -244,3 +265,4 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
     </div>
   );
 }
+

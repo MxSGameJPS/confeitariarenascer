@@ -136,6 +136,7 @@ export default function Menu() {
                           nome: product.name,
                           preco: product.price,
                           img: product.image_url,
+                          pricingMode: product.pricing_mode,
                         })
                       }
                       aria-label={`Adicionar ${product.name} ao carrinho`}
