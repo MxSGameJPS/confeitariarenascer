@@ -42,7 +42,19 @@ export function validateCreateOperationalSale(payload) {
     if (!item || typeof item !== "object") invalid(`Item ${index + 1} inválido.`);
     const quantity = Number(item.quantity);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) invalid(`Quantidade do item ${index + 1} inválida.`);
-    return { productId: uuid(item.productId, `Produto do item ${index + 1}`), quantity };
+
+    if (item.productId) {
+      return { productId: uuid(item.productId, `Produto do item ${index + 1}`), quantity };
+    }
+
+    const name = optionalText(item.name, `Descrição do item ${index + 1}`, 160);
+    if (!name || name.length < 2) invalid(`Informe a descrição do item ${index + 1}.`);
+    return {
+      productId: null,
+      name,
+      unitPrice: money(item.unitPrice, `Preço do item ${index + 1}`),
+      quantity,
+    };
   });
 
   const payments = payload.payments ?? [];

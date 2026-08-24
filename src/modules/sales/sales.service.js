@@ -28,8 +28,8 @@ export async function listSalesService(filters) {
 }
 
 export async function createOperationalSaleService(input, actor) {
-  const ids = [...new Set(input.items.map((item) => item.productId))];
-  const products = await findProductsForSale(ids);
+  const ids = [...new Set(input.items.map((item) => item.productId).filter(Boolean))];
+  const products = ids.length ? await findProductsForSale(ids) : [];
   const byId = new Map(products.map((product) => [product.id, product]));
   if (ids.some((id) => !byId.has(id))) {
     throw new AppError("Um ou mais produtos não estão disponíveis.", { statusCode: 409, code: "PRODUCT_UNAVAILABLE" });
@@ -37,6 +37,19 @@ export async function createOperationalSaleService(input, actor) {
 
   let subtotalCents = 0;
   const items = input.items.map((item) => {
+    if (!item.productId) {
+      const unitCents = cents(item.unitPrice);
+      const itemCents = unitCents * item.quantity;
+      subtotalCents += itemCents;
+      return {
+        product_id: null,
+        product_name: item.name,
+        unit_price: amount(unitCents),
+        quantity: item.quantity,
+        subtotal: amount(itemCents),
+      };
+    }
+
     const product = byId.get(item.productId);
     const unitCents = cents(product.price);
     const itemCents = unitCents * item.quantity;
