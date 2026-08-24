@@ -16,7 +16,7 @@ export default function StaffShell({ session, children }) {
   const router = useRouter();
   const allowed = NAV_ITEMS.filter((item) => item.permission !== "attendant" || session.role === ROLES.ATENDENTE);
   const items = session.role === ROLES.GERENTE
-    ? [...allowed, { href: "/operacao/funcionarios", label: "Funcionários" }]
+    ? [...allowed, { href: "/operacao/mesas", label: "Mesas" }, { href: "/operacao/funcionarios", label: "Funcionários" }]
     : allowed;
 
   async function logout() {

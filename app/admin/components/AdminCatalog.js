@@ -17,6 +17,7 @@ const emptyProduct = {
   stockControl: false,
   stockQuantity: 0,
   sortOrder: 0,
+  pricingMode: "fixed",
 };
 
 const brl = (value) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -139,6 +140,7 @@ export default function AdminCatalog() {
       stockControl: item.stock_control,
       stockQuantity: item.stock_quantity,
       sortOrder: item.sort_order,
+      pricingMode: item.pricing_mode || "fixed",
     });
     document.getElementById("product-form")?.scrollIntoView({ behavior: "smooth" });
   }
@@ -193,6 +195,7 @@ export default function AdminCatalog() {
           <label>Categoria<select value={productForm.categoryId} onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}><option value="">Sem categoria</option>{catalog.categories.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Preço (R$)<input type="number" min="0" step="0.01" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} required /></label>
           <label>Unidade<input value={productForm.unit} onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })} /></label>
+          <label>Tipo de preço<select value={productForm.pricingMode} onChange={(e) => setProductForm({ ...productForm, pricingMode: e.target.value })}><option value="fixed">Preço fixo</option><option value="variable">Informado após pesagem</option></select></label>
           <label className={styles.wide}>Descrição<textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} rows="3" /></label>
           <label>Imagem<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
           <label>Ordem<input type="number" value={productForm.sortOrder} onChange={(e) => setProductForm({ ...productForm, sortOrder: Number(e.target.value) })} /></label>
@@ -209,7 +212,7 @@ export default function AdminCatalog() {
         {loading ? <p className={styles.loading}>Carregando catálogo...</p> : <div className={styles.products}>
           {catalog.products.map((item) => <article key={item.id} className={!item.active ? styles.archived : ""}>
             <div className={styles.thumb}>{item.image_url ? <img src={item.image_url} alt="" /> : <span>Sem foto</span>}</div>
-            <div className={styles.productInfo}><small>{item.category?.name || "Sem categoria"}</small><strong>{item.name}</strong><span>{brl(item.price)} · {item.unit}</span>{item.stock_control && <em>Estoque: {item.stock_quantity}</em>}</div>
+            <div className={styles.productInfo}><small>{item.category?.name || "Sem categoria"}</small><strong>{item.name}</strong><span>{item.pricing_mode === "variable" ? "Preço após pesagem" : brl(item.price)} · {item.unit}</span>{item.stock_control && <em>Estoque: {item.stock_quantity}</em>}</div>
             <div className={styles.rowActions}><button onClick={() => editProduct(item)}>Editar</button>{item.active && <button onClick={() => archive("products", item.id, item.name)}>Arquivar</button>}</div>
           </article>)}
         </div>}

@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin", label: "Cardápio" },
   { href: "/admin/funcionarios", label: "Funcionários" },
   { href: "/admin/administradores", label: "Superadmins" },
+  { href: "/admin/mesas", label: "Mesas e QR Codes" },
 ];
 
 export default function AdminShell({ session, children }) {
