@@ -103,6 +103,7 @@ alter table public.employees enable row level security;
 alter table public.employee_sessions enable row level security;
 alter table public.superadmin_bootstrap_requests enable row level security;
 
+drop trigger if exists employees_set_updated_at on public.employees;
 create trigger employees_set_updated_at
 before update on public.employees
 for each row execute function public.set_updated_at();
@@ -111,7 +112,7 @@ create or replace function private.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, private
+set search_path = pg_catalog
 as $$
 declare
   v_bootstrap public.superadmin_bootstrap_requests;
