@@ -7,7 +7,7 @@ import styles from "./StaffShell.module.css";
 const NAV_ITEMS = [
   { href: "/operacao", label: "Visão geral" },
   { href: "/operacao/delivery", label: "Delivery", permission: "attendant" },
-  { href: "/operacao/comandas", label: "Comandas", permission: "attendant" },
+  { href: "/operacao/comandas", label: "Comandas" },
   { href: "/operacao/caixa", label: "Frente de caixa" },
 ];
 
