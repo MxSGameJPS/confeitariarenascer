@@ -38,12 +38,13 @@ export function validateDeliverySettings(payload) {
     const city = typeof area.city === "string" ? area.city.trim() : "";
     const entireCity = area.entireCity === true;
     const point = entireCity ? null : typeof area.point === "string" ? area.point.trim() : "";
+    const deliveryFee = money(area.deliveryFee ?? payload.deliveryFee, "Taxa da área de entrega");
     if (city.length < 2 || city.length > 80) invalid("Informe uma cidade válida.");
     if (!entireCity && (point.length < 2 || point.length > 100)) invalid("Informe o bairro ou ponto atendido.");
     const key = `${city.toLowerCase()}|${entireCity ? "*" : point.toLowerCase()}`;
     if (keys.has(key)) invalid("Esta área de entrega já foi cadastrada.");
     keys.add(key);
-    return { city, point, entireCity };
+    return { city, point, entireCity, deliveryFee };
   });
 
   if (!Array.isArray(payload.businessHours) || (payload.businessHours.length !== 0 && payload.businessHours.length !== 7)) {

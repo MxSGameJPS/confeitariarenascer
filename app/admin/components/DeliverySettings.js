@@ -9,7 +9,7 @@ const defaultHours = DAYS.map((_, day) => ({ day, enabled: day > 0, opens: "08:0
 
 export default function DeliverySettings() {
   const [settings, setSettings] = useState(null);
-  const [area, setArea] = useState({ city: "", point: "", entireCity: false });
+  const [area, setArea] = useState({ city: "", point: "", entireCity: false, deliveryFee: "" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,9 +30,9 @@ export default function DeliverySettings() {
   function addArea() {
     const city = area.city.trim();
     const point = area.entireCity ? null : area.point.trim();
-    if (!city || (!area.entireCity && !point)) return;
-    change("deliveryAreas", [...settings.deliveryAreas, { city, point, entireCity: area.entireCity }]);
-    setArea({ city: "", point: "", entireCity: false });
+    if (!city || (!area.entireCity && !point) || area.deliveryFee === "") return;
+    change("deliveryAreas", [...settings.deliveryAreas, { city, point, entireCity: area.entireCity, deliveryFee: Number(area.deliveryFee) }]);
+    setArea({ city: "", point: "", entireCity: false, deliveryFee: "" });
   }
 
   async function save(event) {
@@ -62,7 +62,7 @@ export default function DeliverySettings() {
     {message && <p className={styles.success}>{message}</p>}{error && <p className={styles.error}>{error}</p>}
     <section className={styles.panel}><div className={styles.panelHead}><h2>Valores e estimativas</h2><p>Esses dados aparecem no fechamento do pedido.</p></div>
       <div className={styles.grid}>
-        <label>Taxa de entrega (R$)<input type="number" min="0" step="0.01" value={settings.deliveryFee} onChange={(e) => change("deliveryFee", e.target.value)} required /></label>
+        <label>Taxa padrão de entrega (R$)<input type="number" min="0" step="0.01" value={settings.deliveryFee} onChange={(e) => change("deliveryFee", e.target.value)} required /></label>
         <label>Pedido mínimo (R$)<input type="number" min="0" step="0.01" value={settings.minimumOrder} onChange={(e) => change("minimumOrder", e.target.value)} required /></label>
         <label>Entrega mínima (min)<input type="number" min="0" value={settings.deliveryEstimateMin} onChange={(e) => change("deliveryEstimateMin", Number(e.target.value))} required /></label>
         <label>Entrega máxima (min)<input type="number" min="0" value={settings.deliveryEstimateMax} onChange={(e) => change("deliveryEstimateMax", Number(e.target.value))} required /></label>
@@ -76,10 +76,11 @@ export default function DeliverySettings() {
       <div className={areaStyles.areaEntry}>
         <label>Cidade<input value={area.city} onChange={(e) => setArea((current) => ({ ...current, city: e.target.value }))} placeholder="Ex.: Novo Hamburgo" /></label>
         <label>Bairro ou ponto<input value={area.point} disabled={area.entireCity} onChange={(e) => setArea((current) => ({ ...current, point: e.target.value }))} placeholder="Ex.: Canudos" /></label>
+        <label>Taxa (R$)<input type="number" min="0" step="0.01" value={area.deliveryFee} onChange={(e) => setArea((current) => ({ ...current, deliveryFee: e.target.value }))} placeholder="Ex.: 8,00" /></label>
         <label className={areaStyles.entireCity}><input type="checkbox" checked={area.entireCity} onChange={(e) => setArea((current) => ({ ...current, entireCity: e.target.checked, point: "" }))} />Atender toda a cidade</label>
         <button type="button" onClick={addArea}>Adicionar área</button>
       </div>
-      <div className={areaStyles.areas}>{settings.deliveryAreas.map((item, index) => <article key={`${item.city}-${item.point || "all"}`}><div><strong>{item.city}</strong><span>{item.entireCity ? "Toda a cidade" : item.point}</span></div><button type="button" aria-label={`Remover ${item.city}`} onClick={() => change("deliveryAreas", settings.deliveryAreas.filter((_, itemIndex) => itemIndex !== index))}>Remover</button></article>)}</div>
+      <div className={areaStyles.areas}>{settings.deliveryAreas.map((item, index) => <article key={`${item.city}-${item.point || "all"}`}><div><strong>{item.city}</strong><span>{item.entireCity ? "Toda a cidade" : item.point} · {Number(item.deliveryFee ?? settings.deliveryFee).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span></div><button type="button" aria-label={`Remover ${item.city}`} onClick={() => change("deliveryAreas", settings.deliveryAreas.filter((_, itemIndex) => itemIndex !== index))}>Remover</button></article>)}</div>
     </section>
 
     <section className={styles.panel}><div className={styles.panelHead}><h2>Horários de atendimento</h2><p>Pedidos fora dos horários ativos serão recusados automaticamente.</p></div>

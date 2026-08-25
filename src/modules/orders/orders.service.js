@@ -30,6 +30,7 @@ function storeIsOpen(settings) {
 
 export async function createOrderService(input) {
   const settings = await getStoreSettings();
+  let matchedDeliveryArea = null;
 
   if (!settings) {
     throw new AppError("Configuração da loja não encontrada.", {
@@ -55,11 +56,11 @@ export async function createOrderService(input) {
   if (input.fulfillmentType === "entrega" && settings.delivery_areas?.length) {
     const requestedCity = normalizeRegion(input.address?.city);
     const requestedPoint = normalizeRegion(input.address?.neighborhood);
-    const allowed = settings.delivery_areas.some((area) =>
+    matchedDeliveryArea = settings.delivery_areas.find((area) =>
       normalizeRegion(area.city) === requestedCity &&
       (area.entireCity === true || normalizeRegion(area.point) === requestedPoint)
     );
-    if (!allowed) {
+    if (!matchedDeliveryArea) {
       throw new AppError("Este endereço ainda não faz parte da nossa área de entrega.", {
         statusCode: 409,
         code: "DELIVERY_REGION_UNAVAILABLE",
@@ -109,7 +110,9 @@ export async function createOrderService(input) {
   }
 
   const deliveryFeeCents =
-    input.fulfillmentType === "entrega" ? toCents(settings.delivery_fee || 0) : 0;
+    input.fulfillmentType === "entrega"
+      ? toCents(matchedDeliveryArea?.deliveryFee ?? settings.delivery_fee ?? 0)
+      : 0;
   const totalCents = subtotalCents + deliveryFeeCents;
 
   if (input.changeFor !== null && toCents(input.changeFor) < totalCents) {
