@@ -6,7 +6,7 @@ import styles from "./SalesWorkspace.module.css";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const LABELS = { delivery: "Delivery", pos: "Frente de caixa", comanda: "Comandas" };
 
-export default function SalesWorkspace({ channel, canCancel = false }) {
+export default function SalesWorkspace({ channel, canCancel = false, surface = "staff" }) {
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
   const [catalogState, setCatalogState] = useState("loading");
@@ -17,7 +17,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
   const [manualName, setManualName] = useState("");
   const [manualPrice, setManualPrice] = useState("");
   const [manualQuantity, setManualQuantity] = useState(1);
-  const [commandLabel, setCommandLabel] = useState("");
+  const [commandOrderId, setCommandOrderId] = useState("");
   const [method, setMethod] = useState("dinheiro");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,7 +26,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
   const knownPending = useRef(new Set());
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": "staff" }, cache: "no-store" });
+    const response = await fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": surface }, cache: "no-store" });
     const body = await response.json();
     if (response.ok) {
       const pending = body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id));
@@ -36,15 +36,15 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
       knownPending.current = new Set(pending);
       setSales(body.data);
     }
-  }, [channel]);
+  }, [channel, surface]);
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": "staff" }, cache: "no-store" })
+    fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": surface }, cache: "no-store" })
       .then((response) => response.json())
       .then((body) => { if (active && body.data) { setSales(body.data); knownPending.current = new Set(body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id))); } });
     return () => { active = false; };
-  }, [channel]);
+  }, [channel, surface]);
   useEffect(() => { if (channel !== "comanda" && channel !== "delivery") return; const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); }, [channel, load]);
   useEffect(() => { if (channel !== "comanda") return; const timer = window.setTimeout(() => { const enabled = window.localStorage.getItem("renascer.commandSound") === "on"; setSoundEnabled(enabled); soundEnabledRef.current = enabled; }, 0); return () => window.clearTimeout(timer); }, [channel]);
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
   async function action(url, payload = {}) {
     setBusy(true); setMessage("");
     try {
-      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-renascer-surface": "staff" }, body: JSON.stringify(payload) });
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-renascer-surface": surface }, body: JSON.stringify(payload) });
       const body = await response.json();
       if (!response.ok) throw new Error(errorMessage(body));
       await load();
@@ -91,14 +91,16 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
     event.preventDefault();
     const payload = {
       channel,
-      commandLabel: channel === "comanda" ? commandLabel : null,
+      commandLabel: null,
       items: allItems.map((item) => item.productId
         ? { productId: item.productId, quantity: item.quantity, ...(item.pricing_mode === "variable" ? { unitPrice: item.unitPrice } : {}) }
         : { name: item.name, unitPrice: item.unitPrice, quantity: item.quantity }),
       payments: channel === "pos" ? [{ method, amount: Number(total.toFixed(2)) }] : [],
     };
-    if (await action("/api/sales", payload)) {
-      setCart({}); setVariablePrices({}); setManualItems([]); setCommandLabel(""); setMessage("Venda registrada com sucesso.");
+    const target = channel === "comanda" ? `/api/sales/${commandOrderId}/items` : "/api/sales";
+    if (channel === "comanda" && !commandOrderId) { setMessage("Selecione uma comanda de mesa aberta."); return; }
+    if (await action(target, channel === "comanda" ? { items: payload.items } : payload)) {
+      setCart({}); setVariablePrices({}); setManualItems([]); setMessage(channel === "comanda" ? "Itens adicionados à comanda." : "Venda registrada com sucesso.");
     }
   }
 
@@ -149,6 +151,12 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
     await action(`/api/command-requests/${request.id}/accept`, { variablePrices: prices });
   }
 
+  async function rejectRequest(request) {
+    const reason = window.prompt("Informe por que este pedido não poderá ser atendido:");
+    if (!reason) return;
+    await action(`/api/command-requests/${request.id}/reject`, { reason });
+  }
+
   async function acceptDelivery(sale) {
     const prices = [];
     for (const item of sale.items.filter((entry) => entry.pricing_mode === "variable" && entry.status === "ativo")) {
@@ -197,8 +205,8 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
       {channel !== "delivery" && (
         <section className={styles.saleForm}>
           <div className={styles.formTop}>
-            <strong>{channel === "pos" ? "Nova venda avulsa" : "Abrir comanda"}</strong>
-            {channel === "comanda" && <input value={commandLabel} onChange={(event) => setCommandLabel(event.target.value)} placeholder="Mesa ou nome da comanda" required />}
+            <strong>{channel === "pos" ? "Nova venda avulsa" : "Adicionar itens à comanda"}</strong>
+            {channel === "comanda" && <select value={commandOrderId} onChange={(event) => setCommandOrderId(event.target.value)} required><option value="">Selecione uma mesa aberta</option>{sales.filter((sale) => sale.status === "aberto" && sale.table).map((sale) => <option value={sale.id} key={sale.id}>Mesa {sale.table.table_number} · #{sale.order_number}</option>)}</select>}
           </div>
           <div className={styles.posGrid}>
             <div className={styles.catalogPane}>
@@ -239,7 +247,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
               <div className={styles.payment}>
                 <div><span>Total</span><strong>{money.format(total)}</strong></div>
                 {channel === "pos" && <label><span>Forma de pagamento</span><select value={method} onChange={(event) => setMethod(event.target.value)}><option value="dinheiro">Dinheiro</option><option value="pix">Pix</option><option value="credito">Crédito</option><option value="debito">Débito</option></select></label>}
-                <button disabled={busy || allItems.length === 0}>{busy ? "Salvando..." : channel === "pos" ? "Concluir venda" : "Abrir comanda"}</button>
+                <button disabled={busy || allItems.length === 0 || (channel === "comanda" && !commandOrderId)}>{busy ? "Salvando..." : channel === "pos" ? "Concluir venda" : "Adicionar à comanda"}</button>
               </div>
             </form>
           </div>
@@ -254,7 +262,7 @@ export default function SalesWorkspace({ channel, canCancel = false }) {
             <div className={styles.saleHead}><div><small>#{sale.order_number}</small><strong>{sale.command_label || sale.customer?.name || LABELS[sale.channel]}</strong></div><div><b>{money.format(sale.total)}</b><span data-status={sale.status}>{sale.status.replaceAll("_", " ")}</span></div></div>
             {channel === "delivery" && <div className={styles.deliveryInfo}><span>{sale.fulfillment_type === "entrega" ? `${sale.address_street}, ${sale.address_number} · ${sale.address_neighborhood}` : "Retirada no balcão"}</span><span>{sale.customer?.phone} · {sale.payment_method}{sale.change_for ? ` · troco para ${money.format(sale.change_for)}` : ""}</span>{sale.notes && <small>{sale.notes}</small>}</div>}
             <ul>{sale.items.map((item) => <li key={item.id} className={item.status === "cancelado" ? styles.canceled : ""}><span>{item.quantity}× {item.product_name}</span><span>{money.format(item.subtotal)}{canCancel && item.status === "ativo" && sale.status !== "cancelado" && <button type="button" onClick={() => cancel(sale, item.id)}>Cancelar item</button>}</span></li>)}</ul>
-            {channel === "comanda" && (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => <div className={styles.request} key={request.id}><div><strong>Novo pedido do QR</strong><span>{request.customer_name || (sale.table ? `Mesa ${sale.table.table_number}` : "Cliente da mesa")}</span><small>{request.notes || "Sem observações"}</small></div><button disabled={busy} onClick={() => acceptRequest(sale, request)}>Aceitar pedido</button></div>)}
+            {channel === "comanda" && (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => <div className={styles.request} key={request.id}><div><strong>Novo pedido do QR</strong><span>{request.customer_name || (sale.table ? `Mesa ${sale.table.table_number}` : "Cliente da mesa")}</span><ul>{sale.items.filter((item) => item.request_id === request.id && item.status === "ativo").map((item) => <li key={item.id}>{item.quantity}× {item.product_name}</li>)}</ul><small>{request.notes || "Sem observações"}</small></div><div className={styles.requestActions}><button disabled={busy} onClick={() => acceptRequest(sale, request)}>Aceitar pedido</button><button className={styles.reject} disabled={busy} onClick={() => rejectRequest(request)}>Recusar</button></div></div>)}
             <footer>
               <small>{new Date(sale.created_at).toLocaleString("pt-BR")}{sale.responsible_employee ? ` · ${sale.responsible_employee.full_name}` : ""}</small>
               <div>{channel === "delivery" && sale.status === "pendente" && <button disabled={busy} onClick={() => acceptDelivery(sale)}>Aceitar pedido</button>}{channel === "delivery" && deliveryNextAction(sale) && <button disabled={busy} onClick={() => action(`/api/sales/${sale.id}/status`, { status: deliveryNextAction(sale).status })}>{deliveryNextAction(sale).label}</button>}{channel === "comanda" && sale.status === "aberto" && <button disabled={busy} onClick={() => closeCommand(sale)}>Receber e fechar</button>}{canCancel && sale.status !== "cancelado" && <button className={styles.danger} disabled={busy} onClick={() => cancel(sale)}>Cancelar venda</button>}</div>
