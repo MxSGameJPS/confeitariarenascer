@@ -1,0 +1,1 @@
+import AdminOperations from "@/app/admin/components/AdminOperations";import { PERMISSIONS } from "@/src/config/permissions";import { requirePermissionSession } from "@/src/shared/auth/principal-session";export default async function Page(){await requirePermissionSession(PERMISSIONS.AUDIT_VIEW,"admin");return <AdminOperations view="audit"/>;}

@@ -10,6 +10,11 @@ const NAV = [
   { href: "/admin/mesas", label: "Mesas e QR Codes" },
   { href: "/admin/configuracoes", label: "Configurações do delivery" },
   { href: "/admin/comandas", label: "Comandas" },
+  { href: "/admin/pedidos", label: "Pedidos" },
+  { href: "/admin/financeiro", label: "Financeiro" },
+  { href: "/admin/fornecedores", label: "Fornecedores" },
+  { href: "/admin/relatorios", label: "Relatórios" },
+  { href: "/admin/auditoria", label: "Auditoria" },
 ];
 
 export default function AdminShell({ session, children }) {
@@ -37,11 +42,6 @@ export default function AdminShell({ session, children }) {
           {NAV.map((item) => (
             <a key={item.href} href={item.href} className={pathname === item.href ? styles.active : ""}>{item.label}</a>
           ))}
-          <span>Pedidos <em>em breve</em></span>
-          <span>Financeiro <em>em breve</em></span>
-          <span>Fornecedores <em>em breve</em></span>
-          <span>Relatórios <em>em breve</em></span>
-          <span>Auditoria <em>em breve</em></span>
         </nav>
 
         <div className={styles.user}>
