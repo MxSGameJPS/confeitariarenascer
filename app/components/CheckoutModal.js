@@ -26,7 +26,8 @@ export default function CheckoutModal() {
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedPoint, setSelectedPoint] = useState("");
 
-  const selectedArea = settings?.deliveryAreas?.find((area) =>
+  const deliveryAreas = settings?.deliveryAreas ?? [];
+  const selectedArea = deliveryAreas.find((area) =>
     area.city === selectedCity && (area.entireCity ? selectedPoint === "Toda a cidade" : area.point === selectedPoint)
   );
   const currentDeliveryFee = Number(selectedArea?.deliveryFee ?? settings?.deliveryFee ?? 0);
@@ -123,10 +124,10 @@ export default function CheckoutModal() {
 
             {fulfillmentType === "entrega" && (
               <>
-                {settings?.deliveryAreas?.length ? <div className={styles.row}>
-                  <div className={styles.field}><label>CIDADE</label><select name="city" value={selectedCity} onChange={(event) => { setSelectedCity(event.target.value); setSelectedPoint(""); }} required><option value="" disabled>Selecione</option>{[...new Set(settings.deliveryAreas.map((item) => item.city))].map((city) => <option key={city}>{city}</option>)}</select></div>
-                  <div className={styles.field}><label>BAIRRO / PONTO ATENDIDO</label><select name="neighborhood" required value={selectedPoint} onChange={(event) => setSelectedPoint(event.target.value)}><option value="" disabled>Selecione</option>{settings.deliveryAreas.filter((item) => item.city === selectedCity).map((item) => <option key={item.point || "all"} value={item.entireCity ? "Toda a cidade" : item.point}>{item.entireCity ? "Toda a cidade" : item.point}</option>)}</select></div>
-                </div> : <div className={styles.row}><div className={styles.field}><label>CIDADE</label><input name="city" autoComplete="address-level2" required /></div><div className={styles.field}><label>BAIRRO / REGIÃO</label><input name="neighborhood" autoComplete="address-level3" required /></div></div>}
+                <div className={styles.row}>
+                  <div className={styles.field}><label>CIDADE</label><select name="city" value={selectedCity} onChange={(event) => { setSelectedCity(event.target.value); setSelectedPoint(""); }} required><option value="" disabled>Selecione</option>{[...new Set(deliveryAreas.map((item) => item.city))].map((city) => <option key={city}>{city}</option>)}</select></div>
+                  <div className={styles.field}><label>BAIRRO / PONTO ATENDIDO</label><select name="neighborhood" required value={selectedPoint} disabled={!selectedCity} onChange={(event) => setSelectedPoint(event.target.value)}><option value="" disabled>{selectedCity ? "Selecione" : "Escolha a cidade primeiro"}</option>{deliveryAreas.filter((item) => item.city === selectedCity).map((item) => <option key={item.point || "all"} value={item.entireCity ? "Toda a cidade" : item.point}>{item.entireCity ? "Toda a cidade" : item.point}</option>)}</select></div>
+                </div>
                 <div className={styles.row}>
                   <div className={styles.field} style={{ flex: 2 }}><label><Icon.Pin width={14} height={14} /> RUA</label><input name="street" autoComplete="address-line1" required /></div>
                   <div className={styles.field}><label>NÚMERO</label><input name="number" required /></div>
@@ -157,8 +158,9 @@ export default function CheckoutModal() {
             {paymentMethod === "dinheiro" && <div className={styles.field}><label>TROCO PARA (OPCIONAL)</label><input name="changeFor" inputMode="decimal" placeholder="Ex.: 100,00" /></div>}
             <div className={styles.summary}><span>Subtotal</span><strong>{brl(total)}</strong>{fulfillmentType === "entrega" && settings && <><span>Taxa de entrega{selectedArea ? ` · ${selectedArea.city}` : ""}</span><strong>{brl(currentDeliveryFee)}</strong></>}<span>Total previsto</span><strong>{brl(total + (fulfillmentType === "entrega" ? currentDeliveryFee : 0))}</strong>{settings && <small>Pedido mínimo: {brl(settings.minimumOrder)}.</small>}</div>
             {settings && !settings.acceptsOrders && <p className={styles.error} role="alert">O delivery está pausado no momento.</p>}
+            {settings && fulfillmentType === "entrega" && !settings.deliveryAreas?.length && <p className={styles.error} role="alert">As áreas de entrega ainda não foram configuradas.</p>}
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <button type="submit" className={styles.confirm} disabled={busy || items.length === 0 || !settings?.acceptsOrders}>{busy ? "Enviando pedido..." : "Enviar pedido"}</button>
+            <button type="submit" className={styles.confirm} disabled={busy || items.length === 0 || !settings?.acceptsOrders || (fulfillmentType === "entrega" && !selectedArea)}>{busy ? "Enviando pedido..." : "Enviar pedido"}</button>
           </form>
         )}
       </div>

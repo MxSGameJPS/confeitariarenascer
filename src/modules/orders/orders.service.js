@@ -53,7 +53,14 @@ export async function createOrderService(input) {
     });
   }
 
-  if (input.fulfillmentType === "entrega" && settings.delivery_areas?.length) {
+  if (input.fulfillmentType === "entrega" && !settings.delivery_areas?.length) {
+    throw new AppError("As áreas de entrega ainda não foram configuradas.", {
+      statusCode: 503,
+      code: "DELIVERY_AREAS_NOT_CONFIGURED",
+    });
+  }
+
+  if (input.fulfillmentType === "entrega") {
     const requestedCity = normalizeRegion(input.address?.city);
     const requestedPoint = normalizeRegion(input.address?.neighborhood);
     matchedDeliveryArea = settings.delivery_areas.find((area) =>
