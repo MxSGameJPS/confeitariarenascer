@@ -1,0 +1,6 @@
+import { AppError } from "@/src/shared/errors/app-error";
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function invalid(message){throw new AppError(message,{statusCode:400,code:"VALIDATION_ERROR"});}
+function text(value,label,max,{required=false}={}){if(value==null||value===""){if(required)invalid(`Informe ${label}.`);return null;}if(typeof value!=="string")invalid(`${label} inválido.`);const normalized=value.trim();if(required&&normalized.length<2)invalid(`Informe ${label}.`);if(normalized.length>max)invalid(`${label} excede ${max} caracteres.`);return normalized||null;}
+export function validateSupplierId(value){if(!UUID.test(value??""))invalid("Fornecedor inválido.");return value;}
+export function validateSupplier(payload){if(!payload||typeof payload!=="object"||Array.isArray(payload))invalid("Dados do fornecedor inválidos.");const email=text(payload.email,"e-mail",160);if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))invalid("E-mail inválido.");return{name:text(payload.name,"o nome",160,{required:true}),document:text(payload.document,"documento",30),contact_name:text(payload.contactName,"contato",120),phone:text(payload.phone,"telefone",30),email,notes:text(payload.notes,"observações",500),active:payload.active===undefined?true:Boolean(payload.active)};}
