@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { subscribeToSupabaseBroadcast } from "@/src/shared/realtime/supabase-broadcast";
 import styles from "./page.module.css";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const requestLabels = { pendente: "Aguardando atendimento", aceito: "Pedido aceito", cancelado: "Pedido recusado" };
@@ -8,7 +9,12 @@ export default function TableOrderClient({ token }) {
   const [data, setData] = useState(null); const [session, setSession] = useState(undefined); const [activeCategory, setActiveCategory] = useState(null); const [cart, setCart] = useState({}); const [notes, setNotes] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   const loadSession = useCallback(async () => { const response = await fetch(`/api/public/tables/${token}/session`, { cache: "no-store" }); const body = await response.json(); if (response.ok) setSession(body.data); }, [token]);
   useEffect(() => { let active = true; Promise.all([fetch(`/api/public/tables/${token}`, { cache: "no-store" }), fetch(`/api/public/tables/${token}/session`, { cache: "no-store" })]).then(async ([menuResponse, sessionResponse]) => { const menuBody = await menuResponse.json(); const sessionBody = await sessionResponse.json(); if (!active) return; if (!menuResponse.ok) { setMessage(menuBody?.error?.message || "Mesa indisponível."); setSession(null); return; } setData(menuBody.data); setActiveCategory(menuBody.data.categories?.[0]?.id ?? null); setSession(sessionResponse.ok ? sessionBody.data : null); }).catch(() => { if (active) { setMessage("Não foi possível carregar esta mesa."); setSession(null); } }); return () => { active = false; }; }, [token]);
-  useEffect(() => { if (!session || session.status !== "ativo") return; const timer = window.setInterval(loadSession, 5000); return () => window.clearInterval(timer); }, [loadSession, session]);
+  useEffect(() => {
+    if (!session || session.status !== "ativo") return;
+    let unsubscribe = () => {};
+    unsubscribe = subscribeToSupabaseBroadcast({ channel: "renascer:comanda", onChange: loadSession });
+    return () => unsubscribe();
+  }, [loadSession, session]);
   const visibleProducts = useMemo(() => (data?.products ?? []).filter((product) => !activeCategory || product.category_id === activeCategory), [activeCategory, data]);
   const selectedItems = useMemo(() => (data?.products ?? []).filter((product) => cart[product.id]).map((product) => ({ ...product, quantity: cart[product.id] })), [cart, data]);
   const knownSubtotal = selectedItems.reduce((sum, item) => sum + (item.pricing_mode === "variable" ? 0 : item.price * item.quantity), 0); const itemCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);

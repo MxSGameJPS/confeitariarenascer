@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { subscribeToSupabaseBroadcast } from "@/src/shared/realtime/supabase-broadcast";
 import styles from "./page.module.css";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -33,8 +34,9 @@ export default function TrackingClient({ token }) {
 
   useEffect(() => {
     const firstLoad = window.setTimeout(load, 0);
-    const timer = window.setInterval(load, 15000);
-    return () => { window.clearTimeout(firstLoad); window.clearInterval(timer); };
+    let unsubscribe = () => {};
+    unsubscribe = subscribeToSupabaseBroadcast({ channel: "renascer:delivery", onChange: load });
+    return () => { window.clearTimeout(firstLoad); unsubscribe(); };
   }, [load]);
 
   if (!order) {

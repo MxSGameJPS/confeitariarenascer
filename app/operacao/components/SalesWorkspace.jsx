@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { subscribeToSupabaseBroadcast } from "@/src/shared/realtime/supabase-broadcast";
 import styles from "./SalesWorkspace.module.css";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,6 +25,7 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
   const [soundEnabled, setSoundEnabled] = useState(false);
   const soundEnabledRef = useRef(false);
   const knownPending = useRef(new Set());
+  const realtimeRefresh = useRef(null);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": surface }, cache: "no-store" });
@@ -45,7 +47,18 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
       .then((body) => { if (active && body.data) { setSales(body.data); knownPending.current = new Set(body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id))); } });
     return () => { active = false; };
   }, [channel, surface]);
-  useEffect(() => { if (channel !== "comanda" && channel !== "delivery") return; const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); }, [channel, load]);
+  useEffect(() => {
+    if (channel !== "comanda" && channel !== "delivery") return;
+    let unsubscribe = () => {};
+    unsubscribe = subscribeToSupabaseBroadcast({
+      channel: `renascer:${channel}`,
+      onChange: () => {
+        window.clearTimeout(realtimeRefresh.current);
+        realtimeRefresh.current = window.setTimeout(load, 120);
+      },
+    });
+    return () => { unsubscribe(); window.clearTimeout(realtimeRefresh.current); };
+  }, [channel, load]);
   useEffect(() => { if (channel !== "comanda") return; const timer = window.setTimeout(() => { const enabled = window.localStorage.getItem("renascer.commandSound") === "on"; setSoundEnabled(enabled); soundEnabledRef.current = enabled; }, 0); return () => window.clearTimeout(timer); }, [channel]);
   useEffect(() => {
     if (channel === "delivery") return;
