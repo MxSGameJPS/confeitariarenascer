@@ -44,4 +44,10 @@ export async function cancelSale(payload) {
 export async function acceptCommandRequest(payload) {
   return supabaseServerRequest("/rest/v1/rpc/accept_command_request_transaction", { method: "POST", body: payload });
 }
+export async function rejectCommandRequest(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/reject_command_request_transaction", { method: "POST", body: payload });
+}
 
+export async function addCommandItems(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/add_command_items_transaction", { method: "POST", body: payload });
+}

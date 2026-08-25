@@ -8,6 +8,36 @@ export async function findPublicOrderProducts(ids) {
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
 export async function createTableRequest(payload) {
-  return supabaseServerRequest("/rest/v1/rpc/create_table_command_request", { method: "POST", body: payload });
+  return supabaseServerRequest("/rest/v1/rpc/create_table_command_request_v2", { method: "POST", body: payload });
+}
+export async function findCustomerSessionByHash(tokenHash, tableId) {
+  const params = new URLSearchParams({
+    select: "id,table_id,order_id,customer_name,customer_whatsapp,status,joined_at,closed_at",
+    access_token_hash: `eq.${tokenHash}`,
+    table_id: `eq.${tableId}`,
+    limit: "1",
+  });
+  return (await supabaseServerRequest(`/rest/v1/command_customer_sessions?${params}`))[0] ?? null;
+}
+export async function findOpenTableOrder(tableId) {
+  const params = new URLSearchParams({ select: "id", table_id: `eq.${tableId}`, channel: "eq.comanda", status: "eq.aberto", limit: "1" });
+  return (await supabaseServerRequest(`/rest/v1/orders?${params}`))[0] ?? null;
+}
+export async function createCustomerSession(data) {
+  return (await supabaseServerRequest("/rest/v1/command_customer_sessions?select=id,table_id,order_id,customer_name,customer_whatsapp,status,joined_at", {
+    method: "POST", body: data, prefer: "return=representation",
+  }))[0];
+}
+export async function touchCustomerSession(id) {
+  await supabaseServerRequest(`/rest/v1/command_customer_sessions?id=eq.${id}`, { method: "PATCH", body: { last_seen_at: new Date().toISOString() } });
+}
+export async function listCustomerRequests(sessionId) {
+  const params = new URLSearchParams({
+    select: "id,status,notes,created_at,accepted_at,items:order_items(id,product_name,quantity,unit_price,subtotal,pricing_mode,service_status,status,cancellation_reason)",
+    customer_session_id: `eq.${sessionId}`,
+    order: "created_at.desc",
+    limit: "30",
+  });
+  return supabaseServerRequest(`/rest/v1/command_requests?${params}`);
 }
 

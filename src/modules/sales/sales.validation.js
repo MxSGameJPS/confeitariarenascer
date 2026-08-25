@@ -84,6 +84,10 @@ export function validateCreateOperationalSale(payload) {
   };
 }
 
+export function validateAddCommandItems(payload) {
+  return validateCreateOperationalSale({ ...payload, channel: "comanda", commandLabel: "Comanda", payments: [] }).items;
+}
+
 export function validatePayments(payload) {
   if (!payload || !Array.isArray(payload.payments) || payload.payments.length === 0 || payload.payments.length > 4) {
     invalid("Informe os pagamentos.");
@@ -118,6 +122,13 @@ export function validateAcceptCommandRequest(payload) {
     itemId: uuid(item?.itemId, "Item pesado"),
     unitPrice: money(item?.unitPrice, "Valor do item pesado"),
   }));
+}
+
+export function validateRejectCommandRequest(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados da recusa inválidos.");
+  const reason = optionalText(payload.reason, "Motivo", 300);
+  if (!reason || reason.length < 3) invalid("Informe o motivo da recusa.");
+  return reason;
 }
 
 export function validateDeliveryStatus(payload) {
