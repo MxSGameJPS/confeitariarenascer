@@ -16,8 +16,8 @@ export async function POST(request, { params }) {
   try {
     const { token } = await params;
     const result = await openTableCustomerSessionController(validatePublicTableToken(token), validateTableCustomer(await request.json()));
-    const response = successResponse(result.session, 201);
-    response.cookies.set(TABLE_CUSTOMER_COOKIE, result.rawToken, tableCustomerCookieOptions);
-    return response;
+    const cookieStore = await cookies();
+    cookieStore.set(TABLE_CUSTOMER_COOKIE, result.rawToken, tableCustomerCookieOptions);
+    return successResponse(result.session, 201);
   } catch (error) { return handleApiError(error); }
 }
