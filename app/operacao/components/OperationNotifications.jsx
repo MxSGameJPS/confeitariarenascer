@@ -15,6 +15,8 @@ import styles from "./StaffShell.module.css";
 const OperationNotificationsContext = createContext(null);
 const CHANNELS = ["delivery", "comanda"];
 const SOUND_STORAGE_KEY = "renascer.operationSound";
+const ALARM_INTERVAL_MS = 8000;
+const ALARM_CHECK_MS = 1000;
 
 function pendingIds(channel, sales) {
   if (channel === "delivery") {
@@ -66,14 +68,33 @@ export function OperationNotificationsProvider({ children }) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notice, setNotice] = useState(null);
 
+  const countsRef = useRef({ delivery: 0, comanda: 0 });
   const soundEnabledRef = useRef(true);
   const audioRef = useRef({ delivery: null, comanda: null });
   const audioUnlockedRef = useRef(false);
+  const lastSoundAtRef = useRef(0);
+  const lastSoundChannelRef = useRef(null);
   const knownPendingRef = useRef({ delivery: new Set(), comanda: new Set() });
   const initializedRef = useRef({ delivery: false, comanda: false });
   const requestSerialRef = useRef({ delivery: 0, comanda: 0 });
   const refreshTimersRef = useRef({ delivery: null, comanda: null });
   const noticeTimerRef = useRef(null);
+
+  const stopSound = useCallback((channel) => {
+    const audio = audioRef.current[channel];
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+  }, []);
+
+  const stopAllSounds = useCallback(() => {
+    CHANNELS.forEach((channel) => {
+      const audio = audioRef.current[channel];
+      if (!audio) return;
+      audio.pause();
+      audio.currentTime = 0;
+    });
+  }, []);
 
   const unlockAudio = useCallback(async () => {
     if (audioUnlockedRef.current) return;
@@ -102,9 +123,47 @@ export function OperationNotificationsProvider({ children }) {
     const audio = audioRef.current[channel];
     if (!audio) return;
 
+    CHANNELS.forEach((candidate) => {
+      if (candidate === channel) return;
+      const otherAudio = audioRef.current[candidate];
+      if (!otherAudio) return;
+      otherAudio.pause();
+      otherAudio.currentTime = 0;
+    });
+
+    audio.pause();
     audio.currentTime = 0;
+    lastSoundAtRef.current = Date.now();
+    lastSoundChannelRef.current = channel;
     audio.play().catch(() => {});
   }, []);
+
+  const playPendingAlarm = useCallback(() => {
+    if (!soundEnabledRef.current) return;
+
+    const pendingChannels = CHANNELS.filter(
+      (channel) => (countsRef.current[channel] ?? 0) > 0
+    );
+
+    if (pendingChannels.length === 0) {
+      lastSoundAtRef.current = 0;
+      lastSoundChannelRef.current = null;
+      return;
+    }
+
+    if (
+      lastSoundAtRef.current &&
+      Date.now() - lastSoundAtRef.current < ALARM_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    const channel =
+      pendingChannels.find((entry) => entry !== lastSoundChannelRef.current) ??
+      pendingChannels[0];
+
+    playSound(channel);
+  }, [playSound]);
 
   const showNotice = useCallback((channel, count) => {
     const copy = notificationCopy(channel, count);
@@ -137,7 +196,19 @@ export function OperationNotificationsProvider({ children }) {
 
         knownPendingRef.current[channel] = new Set(currentPending);
         initializedRef.current[channel] = true;
-        setCounts((current) => ({ ...current, [channel]: currentPending.length }));
+        setCounts((current) => {
+          const next = { ...current, [channel]: currentPending.length };
+          countsRef.current = next;
+          return next;
+        });
+
+        if (currentPending.length === 0 && previousPending.size > 0) {
+          stopSound(channel);
+          if ((countsRef.current.delivery ?? 0) === 0 && (countsRef.current.comanda ?? 0) === 0) {
+            lastSoundAtRef.current = 0;
+            lastSoundChannelRef.current = null;
+          }
+        }
 
         if (notify && newPending.length > 0) {
           playSound(channel);
@@ -153,7 +224,7 @@ export function OperationNotificationsProvider({ children }) {
         // O monitor continua ativo; o próximo Broadcast/poll tenta sincronizar novamente.
       }
     },
-    [playSound, showNotice]
+    [playSound, showNotice, stopSound]
   );
 
   const scheduleRefresh = useCallback(
@@ -209,6 +280,8 @@ export function OperationNotificationsProvider({ children }) {
       refreshChannel("comanda", { notify: true });
     }, 30000);
 
+    const alarm = window.setInterval(playPendingAlarm, ALARM_CHECK_MS);
+
     const handleFocus = () => {
       refreshChannel("delivery", { notify: true });
       refreshChannel("comanda", { notify: true });
@@ -221,10 +294,11 @@ export function OperationNotificationsProvider({ children }) {
         window.clearTimeout(refreshTimersRef.current[channel])
       );
       window.clearInterval(poll);
+      window.clearInterval(alarm);
       window.clearTimeout(noticeTimerRef.current);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [refreshChannel, scheduleRefresh]);
+  }, [playPendingAlarm, refreshChannel, scheduleRefresh]);
 
   const toggleSound = useCallback(() => {
     const enabled = !soundEnabledRef.current;
@@ -232,8 +306,14 @@ export function OperationNotificationsProvider({ children }) {
     setSoundEnabled(enabled);
     window.localStorage.setItem(SOUND_STORAGE_KEY, enabled ? "on" : "off");
 
-    if (enabled) unlockAudio();
-  }, [unlockAudio]);
+    if (!enabled) {
+      stopAllSounds();
+      return;
+    }
+
+    lastSoundAtRef.current = 0;
+    unlockAudio().then(() => playPendingAlarm());
+  }, [playPendingAlarm, stopAllSounds, unlockAudio]);
 
   const value = useMemo(
     () => ({ counts, soundEnabled, toggleSound }),
