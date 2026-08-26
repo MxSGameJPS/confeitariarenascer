@@ -2,19 +2,17 @@
 
 import { useEffect } from "react";
 
+const REVEAL_SELECTOR =
+  ".reveal, .reveal-left, .reveal-right, .reveal-scale";
+
 /**
- * Ativa animações de scroll: adiciona a classe "is-visible"
- * em qualquer elemento com a classe .reveal / .reveal-left /
- * .reveal-right / .reveal-scale quando ele entra na viewport.
+ * Ativa animações de scroll em elementos existentes e também nos que entram
+ * no DOM depois de carregamentos assíncronos (ex.: cardápio e destaques).
  * Também controla o parallax leve de elementos [data-parallax]
  * e a barra de progresso de scroll [data-progress].
  */
 export default function ScrollReveal() {
   useEffect(() => {
-    const revealEls = document.querySelectorAll(
-      ".reveal, .reveal-left, .reveal-right, .reveal-scale"
-    );
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -27,7 +25,34 @@ export default function ScrollReveal() {
       { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
     );
 
-    revealEls.forEach((el) => observer.observe(el));
+    const observeRevealElements = (root = document) => {
+      if (root instanceof Element && root.matches(REVEAL_SELECTOR)) {
+        observer.observe(root);
+      }
+
+      root
+        .querySelectorAll?.(REVEAL_SELECTOR)
+        .forEach((element) => observer.observe(element));
+    };
+
+    // Elementos que já existem no mount.
+    observeRevealElements(document);
+
+    // Elementos adicionados depois, como produtos carregados via fetch.
+    const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof Element) {
+            observeRevealElements(node);
+          }
+        });
+      });
+    });
+
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
 
     // Parallax + barra de progresso
     const parallaxEls = document.querySelectorAll("[data-parallax]");
@@ -61,6 +86,7 @@ export default function ScrollReveal() {
 
     return () => {
       observer.disconnect();
+      mutationObserver.disconnect();
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
