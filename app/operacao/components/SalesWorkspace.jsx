@@ -22,31 +22,22 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
   const [method, setMethod] = useState("dinheiro");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const soundEnabledRef = useRef(false);
-  const knownPending = useRef(new Set());
   const realtimeRefresh = useRef(null);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": surface }, cache: "no-store" });
     const body = await response.json();
-    if (response.ok) {
-      const pending = body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id));
-      if (channel === "comanda" && soundEnabledRef.current && pending.some((id) => !knownPending.current.has(id))) {
-        new Audio("/sounds/somComanda.mp3").play().catch(() => {});
-      }
-      knownPending.current = new Set(pending);
-      setSales(body.data);
-    }
+    if (response.ok) setSales(body.data ?? []);
   }, [channel, surface]);
 
   useEffect(() => {
     let active = true;
     fetch(`/api/sales?channel=${channel}`, { headers: { "x-renascer-surface": surface }, cache: "no-store" })
       .then((response) => response.json())
-      .then((body) => { if (active && body.data) { setSales(body.data); knownPending.current = new Set(body.data.flatMap((sale) => (sale.requests ?? []).filter((request) => request.status === "pendente").map((request) => request.id))); } });
+      .then((body) => { if (active && body.data) setSales(body.data); });
     return () => { active = false; };
   }, [channel, surface]);
+
   useEffect(() => {
     if (channel !== "comanda" && channel !== "delivery") return;
     let unsubscribe = () => {};
@@ -59,7 +50,7 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
     });
     return () => { unsubscribe(); window.clearTimeout(realtimeRefresh.current); };
   }, [channel, load]);
-  useEffect(() => { if (channel !== "comanda") return; const timer = window.setTimeout(() => { const enabled = window.localStorage.getItem("renascer.commandSound") === "on"; setSoundEnabled(enabled); soundEnabledRef.current = enabled; }, 0); return () => window.clearTimeout(timer); }, [channel]);
+
   useEffect(() => {
     if (channel === "delivery") return;
     let active = true;
@@ -190,13 +181,6 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
     return null;
   }
 
-  function toggleSound() {
-    const enabled = !soundEnabled;
-    setSoundEnabled(enabled); soundEnabledRef.current = enabled;
-    window.localStorage.setItem("renascer.commandSound", enabled ? "on" : "off");
-    if (enabled) new Audio("/sounds/somComanda.mp3").play().catch(() => {});
-  }
-
   async function closeCommand(sale) {
     const selectedMethod = window.prompt("Forma de pagamento: dinheiro, pix, credito ou debito", "dinheiro");
     if (!selectedMethod) return;
@@ -212,7 +196,7 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
 
   return (
     <div className={styles.workspace}>
-      <header><span>OPERAÇÃO UNIFICADA</span><h1>{LABELS[channel]}</h1><p>Itens, pagamentos, responsável, auditoria e financeiro no mesmo registro.</p>{channel === "comanda" && <button type="button" className={styles.sound} onClick={toggleSound}>{soundEnabled ? "Som de novas comandas ativado" : "Ativar som de novas comandas"}</button>}</header>
+      <header><span>OPERAÇÃO UNIFICADA</span><h1>{LABELS[channel]}</h1><p>Itens, pagamentos, responsável, auditoria e financeiro no mesmo registro.</p></header>
       {message && <div className={styles.message}>{message}</div>}
 
       {channel !== "delivery" && (
@@ -286,4 +270,3 @@ export default function SalesWorkspace({ channel, canCancel = false, surface = "
     </div>
   );
 }
-
