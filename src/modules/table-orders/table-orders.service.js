@@ -29,7 +29,11 @@ export async function getTableCustomerSessionService(token, rawToken) {
   const table = await findPublicTable(token);
   if (!table || !rawToken) return null;
   const session = await findCustomerSessionByHash(hashTableCustomerToken(rawToken), table.id);
-  if (!session) return null;
+
+  // Sessões de comandas já fechadas pertencem à visita anterior. Elas não
+  // devem bloquear um novo atendimento ao reler o mesmo QR Code da mesa.
+  if (!session || session.status !== "ativo") return null;
+
   await touchCustomerSession(session.id);
   const requests = await listCustomerRequests(session.id);
   return {
@@ -56,4 +60,3 @@ export async function createTableOrderService(token, input, rawToken) {
   });
   return createTableRequest({ p_table_token: token, p_customer_session_id: session.id, p_notes: input.notes, p_items: items });
 }
-
