@@ -23,6 +23,7 @@ export const PERMISSIONS = Object.freeze({
   TABLES_VIEW: "tables.view",
   TABLES_CREATE: "tables.create",
   TABLES_STATUS: "tables.status",
+  WEIGHING_DEVICES_MANAGE: "weighing_devices.manage",
 });
 
 const ROLE_PERMISSIONS = Object.freeze({
