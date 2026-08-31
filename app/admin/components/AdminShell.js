@@ -9,6 +9,7 @@ const NAV = [
   { href: "/admin/administradores", label: "Superadmins" },
   { href: "/admin/mesas", label: "Mesas e QR Codes" },
   { href: "/admin/configuracoes", label: "Configurações do delivery" },
+  { href: "/admin/integracoes-gemaster", label: "Integração GeMaster" },
   { href: "/admin/comandas", label: "Comandas" },
   { href: "/admin/pedidos", label: "Pedidos" },
   { href: "/admin/financeiro", label: "Financeiro" },
@@ -57,4 +58,3 @@ export default function AdminShell({ session, children }) {
     </div>
   );
 }
-
