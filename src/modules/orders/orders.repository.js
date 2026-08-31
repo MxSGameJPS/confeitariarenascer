@@ -25,7 +25,7 @@ export async function findActiveProductsByIds(productIds) {
 
 export async function findDeliveryByTrackingToken(token) {
   const params = new URLSearchParams({
-    select: "order_number,status,payment_status,payment_method,fulfillment_type,subtotal,delivery_fee,total,created_at,accepted_at,preparation_started_at,ready_at,dispatched_at,completed_at,items:order_items(product_name,quantity,unit_price,subtotal,pricing_mode,status)",
+    select: "order_number,delivery_code,status,payment_status,payment_method,fulfillment_type,subtotal,delivery_fee,total,created_at,accepted_at,preparation_started_at,ready_at,dispatched_at,completed_at,items:order_items(product_name,quantity,unit_price,subtotal,pricing_mode,status)",
     tracking_token: `eq.${token}`,
     channel: "eq.delivery",
     limit: "1",
