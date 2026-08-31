@@ -24,6 +24,7 @@ export const PERMISSIONS = Object.freeze({
   TABLES_CREATE: "tables.create",
   TABLES_STATUS: "tables.status",
   WEIGHING_DEVICES_MANAGE: "weighing_devices.manage",
+  BRIDGE_MANAGE: "bridge.manage",
 });
 
 const ROLE_PERMISSIONS = Object.freeze({
