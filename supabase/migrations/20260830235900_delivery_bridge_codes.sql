@@ -20,10 +20,13 @@ begin
   loop
     v_candidate := 'DV';
 
+    -- Usa random() nativo do PostgreSQL para evitar dependência de
+    -- gen_random_bytes()/pgcrypto. A unicidade é garantida também pelo
+    -- índice único criado abaixo.
     for v_index in 1..8 loop
       v_candidate := v_candidate || substr(
         v_alphabet,
-        (get_byte(gen_random_bytes(1), 0) % char_length(v_alphabet)) + 1,
+        floor(random() * char_length(v_alphabet))::integer + 1,
         1
       );
     end loop;
@@ -40,6 +43,7 @@ end;
 $$;
 
 -- Backfill dos deliveries já existentes antes de ativar a restrição.
+-- É idempotente: se a execução anterior parou no meio, só preenche os nulos.
 do $$
 declare
   v_order_id uuid;
