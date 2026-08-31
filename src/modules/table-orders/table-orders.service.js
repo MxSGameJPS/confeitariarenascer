@@ -1,9 +1,28 @@
 import { AppError } from "@/src/shared/errors/app-error";
 import { getProductsService } from "@/src/modules/catalog/catalog.service";
-import { createCustomerSession, createTableRequest, findCustomerSessionByHash, findOpenTableOrder, findPublicOrderProducts, findPublicTable, listCustomerRequests, touchCustomerSession } from "@/src/modules/table-orders/table-orders.repository";
+import { createTableRequest, findCommandOrder, findCustomerSessionByHash, findPublicOrderProducts, findPublicTable, listCustomerRequests, openCustomerSession, touchCustomerSession } from "@/src/modules/table-orders/table-orders.repository";
 import { createTableCustomerToken, hashTableCustomerToken } from "@/src/modules/table-orders/table-orders.cookies";
+
 const cents = (value) => Math.round(Number(value) * 100);
 const amount = (value) => Number((value / 100).toFixed(2));
+
+function mapCustomerSession(session, { order = null, requests = [] } = {}) {
+  const commandNumber = session.command_number ?? order?.order_number ?? null;
+  return {
+    id: session.id,
+    name: session.customer_name,
+    whatsapp: session.customer_whatsapp,
+    status: session.status,
+    joinedAt: session.joined_at,
+    closedAt: session.closed_at,
+    commandNumber: commandNumber === null ? null : Number(commandNumber),
+    orderId: session.order_id ?? order?.id ?? null,
+    orderStatus: session.order_status ?? order?.status ?? null,
+    total: Number(session.total ?? order?.total ?? 0),
+    requests: requests.map((request) => ({ ...request, items: (request.items ?? []).map((item) => ({ ...item, unit_price: Number(item.unit_price), subtotal: Number(item.subtotal) })) })),
+  };
+}
+
 export async function getTableMenuService(token) {
   const table = await findPublicTable(token);
   if (!table || !table.active || !table.command_enabled) throw new AppError("Esta mesa não está recebendo pedidos no momento.", { statusCode: 404, code: "TABLE_UNAVAILABLE" });
@@ -11,37 +30,27 @@ export async function getTableMenuService(token) {
   const categories = [...new Map(products.filter((product) => product.category).map((product) => [product.category.id, product.category])).values()];
   return { table: { tableNumber: table.table_number, seats: table.seats }, categories, products };
 }
+
 export async function openTableCustomerSessionService(token, input) {
   const table = await findPublicTable(token);
   if (!table || !table.active || !table.command_enabled) throw new AppError("Esta mesa não está recebendo pedidos no momento.", { statusCode: 409, code: "TABLE_UNAVAILABLE" });
   const rawToken = createTableCustomerToken();
-  const openOrder = await findOpenTableOrder(table.id);
-  const session = await createCustomerSession({
-    table_id: table.id,
-    order_id: openOrder?.id ?? null,
-    customer_name: input.name,
-    customer_whatsapp: input.whatsapp,
-    access_token_hash: hashTableCustomerToken(rawToken),
-  });
-  return { session, rawToken };
+  const session = await openCustomerSession({ p_table_token: token, p_customer_name: input.name, p_customer_whatsapp: input.whatsapp, p_access_token_hash: hashTableCustomerToken(rawToken) });
+  return { session: mapCustomerSession(session), rawToken };
 }
+
 export async function getTableCustomerSessionService(token, rawToken) {
   const table = await findPublicTable(token);
   if (!table || !rawToken) return null;
   const session = await findCustomerSessionByHash(hashTableCustomerToken(rawToken), table.id);
-
-  // Sessões de comandas já fechadas pertencem à visita anterior. Elas não
-  // devem bloquear um novo atendimento ao reler o mesmo QR Code da mesa.
   if (!session || session.status !== "ativo") return null;
-
+  const order = session.order_id ? await findCommandOrder(session.order_id) : null;
+  if (session.order_id && (!order || order.status !== "aberto")) return null;
   await touchCustomerSession(session.id);
   const requests = await listCustomerRequests(session.id);
-  return {
-    id: session.id, name: session.customer_name, whatsapp: session.customer_whatsapp,
-    status: session.status, joinedAt: session.joined_at, closedAt: session.closed_at,
-    requests: requests.map((request) => ({ ...request, items: (request.items ?? []).map((item) => ({ ...item, unit_price: Number(item.unit_price), subtotal: Number(item.subtotal) })) })),
-  };
+  return mapCustomerSession(session, { order, requests });
 }
+
 export async function createTableOrderService(token, input, rawToken) {
   const table = await findPublicTable(token);
   if (!table || !table.active || !table.command_enabled) throw new AppError("Esta mesa não está recebendo pedidos no momento.", { statusCode: 409, code: "TABLE_UNAVAILABLE" });
