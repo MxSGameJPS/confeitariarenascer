@@ -30,7 +30,7 @@ export async function findCustomerSessionByHash(tokenHash, tableId) {
 
 export async function findCommandOrder(orderId) {
   const params = new URLSearchParams({
-    select: "id,order_number,table_id,status,payment_status,total,command_label",
+    select: "id,order_number,table_id,table_visit_id,status,payment_status,total,command_label,visit:table_visits(id,status,opened_at,occupied_at,closed_at)",
     id: `eq.${orderId}`,
     channel: "eq.comanda",
     limit: "1",

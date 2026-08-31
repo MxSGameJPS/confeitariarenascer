@@ -1,12 +1,153 @@
 "use client";
+
 import { useCallback, useEffect, useState } from "react";
+import { subscribeToSupabaseBroadcast } from "@/src/shared/realtime/supabase-broadcast";
 import styles from "./TableManager.module.css";
+
+const occupancyLabels = {
+  livre: "Livre",
+  aberto: "Aguardando aprovação",
+  ocupado: "Ocupada",
+};
+
 export default function TableManager({ surface, canCreate }) {
-  const [tables, setTables] = useState([]); const [tableNumber, setTableNumber] = useState(""); const [seats, setSeats] = useState(4); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
-  const request = useCallback(async (url, options = {}) => { const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", "x-renascer-surface": surface, ...options.headers } }); const body = await response.json(); if (!response.ok) throw new Error(body?.error?.message || "Não foi possível concluir."); return body.data; }, [surface]);
-  const load = useCallback(async () => { try { setTables(await request("/api/management/tables")); } catch (error) { setMessage(error.message); } }, [request]);
-  useEffect(() => { let active = true; request("/api/management/tables").then((data) => { if (active) setTables(data); }).catch((error) => { if (active) setMessage(error.message); }); return () => { active = false; }; }, [request]);
-  async function create(event) { event.preventDefault(); setBusy(true); try { await request("/api/management/tables", { method: "POST", body: JSON.stringify({ tableNumber: Number(tableNumber), seats: Number(seats) }) }); setTableNumber(""); setSeats(4); setMessage("Mesa criada e QR Code disponível."); await load(); } catch (error) { setMessage(error.message); } finally { setBusy(false); } }
-  async function toggle(table, field) { setBusy(true); try { await request(`/api/management/tables/${table.id}`, { method: "PATCH", body: JSON.stringify({ active: field === "active" ? !table.active : table.active, commandEnabled: field === "command" ? !table.command_enabled : table.command_enabled }) }); await load(); } catch (error) { setMessage(error.message); } finally { setBusy(false); } }
-  return <div className={styles.wrap}><header><span>SALÃO</span><h1>Mesas e comandas</h1><p>Gerencie mesas físicas, lugares, acesso por QR Code e disponibilidade das comandas.</p></header>{message && <div className={styles.message}>{message}</div>}{canCreate && <form className={styles.create} onSubmit={create}><label>Número da mesa<input type="number" min="1" max="9999" value={tableNumber} onChange={(event) => setTableNumber(event.target.value)} required /></label><label>Lugares<input type="number" min="1" max="50" value={seats} onChange={(event) => setSeats(event.target.value)} required /></label><button disabled={busy}>Cadastrar mesa</button></form>}<section className={styles.grid}>{tables.map((table) => <article key={table.id}><div><small>MESA</small><strong>{table.table_number}</strong><span>{table.seats} lugares</span></div><dl><div><dt>Mesa</dt><dd>{table.active ? "Ativa" : "Inativa"}</dd></div><div><dt>Comanda</dt><dd>{table.command_enabled ? "Ativa" : "Inativa"}</dd></div></dl><div className={styles.actions}><a href={`/api/management/tables/${table.id}/qrcode`} download>Baixar QR Code</a><button disabled={busy} onClick={() => toggle(table, "active")}>{table.active ? "Desativar mesa" : "Ativar mesa"}</button><button disabled={busy} onClick={() => toggle(table, "command")}>{table.command_enabled ? "Desativar comanda" : "Ativar comanda"}</button></div></article>)}</section>{tables.length === 0 && <p className={styles.empty}>Nenhuma mesa cadastrada.</p>}</div>;
+  const [tables, setTables] = useState([]);
+  const [tableNumber, setTableNumber] = useState("");
+  const [seats, setSeats] = useState(4);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const request = useCallback(async (url, options = {}) => {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "x-renascer-surface": surface,
+        ...options.headers,
+      },
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body?.error?.message || "Não foi possível concluir.");
+    return body.data;
+  }, [surface]);
+
+  const load = useCallback(async () => {
+    try {
+      setTables(await request("/api/management/tables"));
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    let active = true;
+    request("/api/management/tables")
+      .then((data) => { if (active) setTables(data); })
+      .catch((error) => { if (active) setMessage(error.message); });
+    return () => { active = false; };
+  }, [request]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToSupabaseBroadcast({
+      channel: "renascer:comanda",
+      onChange: load,
+    });
+    return () => unsubscribe();
+  }, [load]);
+
+  async function create(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await request("/api/management/tables", {
+        method: "POST",
+        body: JSON.stringify({ tableNumber: Number(tableNumber), seats: Number(seats) }),
+      });
+      setTableNumber("");
+      setSeats(4);
+      setMessage("Mesa criada e QR Code disponível.");
+      await load();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggle(table, field) {
+    setBusy(true);
+    try {
+      await request(`/api/management/tables/${table.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          active: field === "active" ? !table.active : table.active,
+          commandEnabled: field === "command" ? !table.command_enabled : table.command_enabled,
+        }),
+      });
+      await load();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={styles.wrap}>
+      <header>
+        <span>SALÃO</span>
+        <h1>Mesas e comandas</h1>
+        <p>Gerencie mesas físicas, lugares, acesso por QR Code e disponibilidade das comandas.</p>
+      </header>
+
+      {message && <div className={styles.message}>{message}</div>}
+
+      {canCreate && (
+        <form className={styles.create} onSubmit={create}>
+          <label>
+            Número da mesa
+            <input type="number" min="1" max="9999" value={tableNumber} onChange={(event) => setTableNumber(event.target.value)} required />
+          </label>
+          <label>
+            Lugares
+            <input type="number" min="1" max="50" value={seats} onChange={(event) => setSeats(event.target.value)} required />
+          </label>
+          <button disabled={busy}>Cadastrar mesa</button>
+        </form>
+      )}
+
+      <section className={styles.grid}>
+        {tables.map((table) => (
+          <article key={table.id}>
+            <div>
+              <small>MESA</small>
+              <strong>{table.table_number}</strong>
+              <span>{table.seats} lugares</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Mesa</dt>
+                <dd>{table.active ? "Ativa" : "Inativa"}</dd>
+              </div>
+              <div>
+                <dt>Comanda</dt>
+                <dd>{table.command_enabled ? "Ativa" : "Inativa"}</dd>
+              </div>
+              <div>
+                <dt>Ocupação</dt>
+                <dd data-occupancy={table.occupancy_status}>{occupancyLabels[table.occupancy_status] ?? "Livre"}</dd>
+              </div>
+            </dl>
+            <div className={styles.actions}>
+              <a href={`/api/management/tables/${table.id}/qrcode`} download>Baixar QR Code</a>
+              <button disabled={busy} onClick={() => toggle(table, "active")}>{table.active ? "Desativar mesa" : "Ativar mesa"}</button>
+              <button disabled={busy} onClick={() => toggle(table, "command")}>{table.command_enabled ? "Desativar comanda" : "Ativar comanda"}</button>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      {tables.length === 0 && <p className={styles.empty}>Nenhuma mesa cadastrada.</p>}
+    </div>
+  );
 }

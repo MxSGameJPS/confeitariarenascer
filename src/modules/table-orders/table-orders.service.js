@@ -18,6 +18,8 @@ function mapCustomerSession(session, { order = null, requests = [] } = {}) {
     commandNumber: commandNumber === null ? null : Number(commandNumber),
     orderId: session.order_id ?? order?.id ?? null,
     orderStatus: session.order_status ?? order?.status ?? null,
+    tableVisitId: session.table_visit_id ?? order?.table_visit_id ?? null,
+    tableVisitStatus: session.table_visit_status ?? order?.visit?.status ?? null,
     total: Number(session.total ?? order?.total ?? 0),
     requests: requests.map((request) => ({ ...request, items: (request.items ?? []).map((item) => ({ ...item, unit_price: Number(item.unit_price), subtotal: Number(item.subtotal) })) })),
   };
@@ -45,7 +47,7 @@ export async function getTableCustomerSessionService(token, rawToken) {
   const session = await findCustomerSessionByHash(hashTableCustomerToken(rawToken), table.id);
   if (!session || session.status !== "ativo") return null;
   const order = session.order_id ? await findCommandOrder(session.order_id) : null;
-  if (session.order_id && (!order || order.status !== "aberto")) return null;
+  if (session.order_id && (!order || order.status !== "aberto" || order.visit?.status === "encerrado")) return null;
   await touchCustomerSession(session.id);
   const requests = await listCustomerRequests(session.id);
   return mapCustomerSession(session, { order, requests });
