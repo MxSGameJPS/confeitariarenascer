@@ -31,6 +31,21 @@ export function validateSaleId(value) {
   return uuid(value, "Venda");
 }
 
+export function validateOpenCounterCommand(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados da comanda inválidos.");
+  const commandLabel = optionalText(payload.commandLabel, "Identificação da comanda", 80);
+  if (!commandLabel || commandLabel.length < 2) invalid("Informe o nome ou identificação do cliente.");
+  return { commandLabel, operationId: uuid(payload.operationId, "OperationId") };
+}
+
+export function validateLinkCommandToTable(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados do vínculo inválidos.");
+  return {
+    tableId: uuid(payload.tableId, "Mesa"),
+    operationId: uuid(payload.operationId, "OperationId"),
+  };
+}
+
 export function validateCreateOperationalSale(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados da venda inválidos.");
   if (!CHANNELS.has(payload.channel)) invalid("Canal da venda inválido.");
@@ -136,4 +151,3 @@ export function validateDeliveryStatus(payload) {
   if (!payload || !allowed.has(payload.status)) invalid("Próximo status inválido.");
   return payload.status;
 }
-

@@ -7,12 +7,16 @@ import {
   cancelSaleService,
   closeCommandService,
   createOperationalSaleService,
+  linkCommandToTableService,
   listSalesService,
+  openCounterCommandService,
   rejectCommandRequestService,
 } from "@/src/modules/sales/sales.service";
 
 export async function listSalesController(filters) { return successResponse(await listSalesService(filters)); }
 export async function createSaleController(input, actor) { return successResponse(await createOperationalSaleService(input, actor), 201); }
+export async function openCounterCommandController(input, actor) { return successResponse(await openCounterCommandService(input, actor), 201); }
+export async function linkCommandToTableController(id, input, actor) { return successResponse(await linkCommandToTableService(id, input, actor)); }
 export async function acceptDeliveryController(id, prices, actor) { return successResponse(await acceptDeliveryService(id, prices, actor)); }
 export async function advanceDeliveryController(id, nextStatus, actor) { return successResponse(await advanceDeliveryService(id, nextStatus, actor)); }
 export async function closeCommandController(id, payments, actor) { return successResponse(await closeCommandService(id, payments, actor)); }

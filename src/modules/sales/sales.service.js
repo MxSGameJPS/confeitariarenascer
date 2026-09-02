@@ -8,7 +8,9 @@ import {
   closeCommand,
   createOperationalSale,
   findProductsForSale,
+  linkCommandToTable,
   listOperationalSales,
+  openCounterCommand,
   rejectCommandRequest,
 } from "@/src/modules/sales/sales.repository";
 
@@ -68,6 +70,23 @@ export async function createOperationalSaleService(input, actor) {
     p_sale: { channel: input.channel, subtotal: total, total, command_label: input.commandLabel, notes: input.notes, change_for: input.changeFor },
     p_items: items,
     p_payments: input.payments,
+    ...actorPayload(actor),
+  });
+}
+
+export async function openCounterCommandService(input, actor) {
+  return openCounterCommand({
+    p_command_label: input.commandLabel,
+    p_operation_key: input.operationId,
+    ...actorPayload(actor),
+  });
+}
+
+export async function linkCommandToTableService(orderId, input, actor) {
+  return linkCommandToTable({
+    p_order_id: orderId,
+    p_table_id: input.tableId,
+    p_operation_key: input.operationId,
     ...actorPayload(actor),
   });
 }

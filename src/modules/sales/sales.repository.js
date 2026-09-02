@@ -25,6 +25,14 @@ export async function createOperationalSale(payload) {
   return supabaseServerRequest("/rest/v1/rpc/create_operational_sale_transaction", { method: "POST", body: payload });
 }
 
+export async function openCounterCommand(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/open_counter_command_transaction", { method: "POST", body: payload });
+}
+
+export async function linkCommandToTable(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/link_command_to_table_transaction", { method: "POST", body: payload });
+}
+
 export async function acceptDelivery(payload) {
   return supabaseServerRequest("/rest/v1/rpc/accept_delivery_transaction", { method: "POST", body: payload });
 }
