@@ -32,13 +32,40 @@ function normalizeNumbers(payload) {
   };
 }
 
+function bridgeBusinessError(error, code) {
+  const message = error?.message || "";
+  if (message === "Pedido sem itens ativos") {
+    return new AppError(`A comanda ${code} ainda não possui itens.`, { statusCode: 409, code: "BRIDGE_EMPTY_ORDER" });
+  }
+  if (message === "Comanda nao encontrada ou encerrada") {
+    return new AppError(`A comanda ${code} não foi encontrada ou já está encerrada.`, { statusCode: 404, code: "BRIDGE_COMMAND_NOT_FOUND" });
+  }
+  if (message === "Comanda possui solicitacoes pendentes") {
+    return new AppError(`A comanda ${code} ainda possui solicitações pendentes.`, { statusCode: 409, code: "BRIDGE_PENDING_REQUESTS" });
+  }
+  if (message === "Pedido possui itens ainda nao aceitos") {
+    return new AppError(`${code} possui itens que ainda não foram aceitos pela equipe.`, { statusCode: 409, code: "BRIDGE_PENDING_ITEMS" });
+  }
+  if (message.startsWith("Produto sem mapeamento GeMaster:")) {
+    return new AppError(message.replace("Produto sem mapeamento GeMaster:", "Produto sem código GeMaster:"), { statusCode: 409, code: "BRIDGE_PRODUCT_NOT_MAPPED" });
+  }
+  if (message.startsWith("Item sem produto vinculado:")) {
+    return new AppError(`${message} O Bridge só envia produtos cadastrados e mapeados para o GeMaster.`, { statusCode: 409, code: "BRIDGE_MANUAL_ITEM_NOT_SUPPORTED" });
+  }
+  return error;
+}
+
 export async function resolveBridgeCodeService(input, device) {
-  const result = await prepareBridgeDispatch({
-    p_reference_code: input.code,
-    p_operation_key: input.operationId,
-    p_device_id: device.id,
-  });
-  return normalizeNumbers(result);
+  try {
+    const result = await prepareBridgeDispatch({
+      p_reference_code: input.code,
+      p_operation_key: input.operationId,
+      p_device_id: device.id,
+    });
+    return normalizeNumbers(result);
+  } catch (error) {
+    throw bridgeBusinessError(error, input.code);
+  }
 }
 
 export async function updateBridgeDispatchStatusService(dispatchId, input, device) {
