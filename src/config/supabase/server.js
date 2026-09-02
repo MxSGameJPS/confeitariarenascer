@@ -14,9 +14,16 @@ async function parseResponse(response) {
   }
 }
 
+function safeDatabaseMessage(data, prefixes) {
+  if (!Array.isArray(prefixes) || prefixes.length === 0) return null;
+  const message = typeof data?.message === "string" ? data.message.trim() : "";
+  if (!message) return null;
+  return prefixes.some((prefix) => message.startsWith(prefix)) ? message : null;
+}
+
 export async function supabaseServerRequest(
   path,
-  { method = "GET", body, headers = {}, prefer, cache = "no-store" } = {}
+  { method = "GET", body, headers = {}, prefer, cache = "no-store", safeErrorPrefixes = [] } = {}
 ) {
   const { url, secretKey } = getSupabaseServerEnv();
   const target = new URL(path, `${url}/`);
@@ -42,9 +49,10 @@ export async function supabaseServerRequest(
   const data = await parseResponse(response);
 
   if (!response.ok) {
-    throw new AppError("Falha ao acessar o banco de dados.", {
-      statusCode: 500,
-      code: "DATABASE_ERROR",
+    const safeMessage = safeDatabaseMessage(data, safeErrorPrefixes);
+    throw new AppError(safeMessage || "Falha ao acessar o banco de dados.", {
+      statusCode: safeMessage ? 409 : 500,
+      code: safeMessage ? "DATABASE_BUSINESS_RULE" : "DATABASE_ERROR",
       details:
         process.env.NODE_ENV === "development"
           ? { status: response.status, response: data }
