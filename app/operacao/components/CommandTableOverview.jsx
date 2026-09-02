@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subscribeToSupabaseBroadcast } from "@/src/shared/realtime/supabase-broadcast";
+import { formatCommandCode } from "@/src/shared/formatters/command-code";
 import styles from "./CommandTableOverview.module.css";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -136,7 +137,7 @@ export default function CommandTableOverview({ surface = "staff" }) {
                   return (
                     <li key={command.id}>
                       <div>
-                        <strong>Comanda {command.order_number}</strong>
+                        <strong>Comanda {formatCommandCode(command.order_number)}</strong>
                         <span>{command.command_label || "Cliente da mesa"}</span>
                       </div>
                       <div className={styles.commandMeta}>
