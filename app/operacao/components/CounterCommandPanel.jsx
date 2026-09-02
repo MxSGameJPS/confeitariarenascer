@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatCommandCode } from "@/src/shared/formatters/command-code";
 import styles from "./CounterCommandPanel.module.css";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -70,7 +71,7 @@ export default function CounterCommandPanel({ surface = "staff" }) {
       openOperation.current = null;
       setLabel("");
       setItemCommandId(body.data.id);
-      setMessage(`Comanda #${body.data.order_number} aberta. Agora você já pode lançar os produtos do balcão.`);
+      setMessage(`Comanda ${formatCommandCode(body.data.order_number)} aberta. Agora você já pode lançar os produtos do balcão.`);
       await load();
     } catch (error) {
       setMessage(`${error.message} Você pode tentar novamente sem risco de duplicar a comanda.`);
@@ -111,7 +112,7 @@ export default function CounterCommandPanel({ surface = "staff" }) {
       const body = await response.json();
       if (!response.ok) throw new Error(apiError(body));
       setItemProductId(""); setItemQuantity(1);
-      setMessage(`${quantity}× ${product.name} adicionado à comanda #${command.order_number}.`);
+      setMessage(`${quantity}× ${product.name} adicionado à comanda ${formatCommandCode(command.order_number)}.`);
       await load();
     } catch (error) { setMessage(error.message); }
     finally { setBusy(false); }
@@ -133,7 +134,7 @@ export default function CounterCommandPanel({ surface = "staff" }) {
       delete linkOperations.current[command.id];
       setTableSelection((current) => { const next = { ...current }; delete next[command.id]; return next; });
       if (itemCommandId === command.id) setItemCommandId("");
-      setMessage(`Comanda #${command.order_number} vinculada à Mesa ${body.data.table_number}.`);
+      setMessage(`Comanda ${formatCommandCode(command.order_number)} vinculada à Mesa ${body.data.table_number}.`);
       await load();
     } catch (error) {
       setMessage(`${error.message} Você pode tentar novamente sem risco de duplicar o vínculo.`);
@@ -158,7 +159,7 @@ export default function CounterCommandPanel({ surface = "staff" }) {
           <strong>Lançamento rápido no balcão</strong>
           <select value={itemCommandId} onChange={(event) => setItemCommandId(event.target.value)}>
             <option value="">Selecione a comanda...</option>
-            {counterCommands.map((command) => <option key={command.id} value={command.id}>#{command.order_number} · {command.command_label}</option>)}
+            {counterCommands.map((command) => <option key={command.id} value={command.id}>{formatCommandCode(command.order_number)} · {command.command_label}</option>)}
           </select>
           <select value={itemProductId} onChange={(event) => setItemProductId(event.target.value)}>
             <option value="">Selecione o produto...</option>
@@ -173,9 +174,9 @@ export default function CounterCommandPanel({ surface = "staff" }) {
         {counterCommands.length === 0 && <p className={styles.empty}>Nenhuma comanda aberta está aguardando mesa.</p>}
         {counterCommands.map((command) => (
           <article key={command.id}>
-            <div className={styles.commandInfo}><span>COMANDA #{command.order_number}</span><strong>{command.command_label || "Cliente do balcão"}</strong><small>{command.items?.filter((item) => item.status === "ativo").length || 0} item(ns) · {money.format(Number(command.total || 0))}</small></div>
+            <div className={styles.commandInfo}><span>COMANDA {formatCommandCode(command.order_number)}</span><strong>{command.command_label || "Cliente do balcão"}</strong><small>{command.items?.filter((item) => item.status === "ativo").length || 0} item(ns) · {money.format(Number(command.total || 0))}</small></div>
             <div className={styles.linkArea}>
-              <select value={tableSelection[command.id] || ""} onChange={(event) => selectTable(command.id, event.target.value)} aria-label={`Mesa para a comanda ${command.order_number}`}>
+              <select value={tableSelection[command.id] || ""} onChange={(event) => selectTable(command.id, event.target.value)} aria-label={`Mesa para a comanda ${formatCommandCode(command.order_number)}`}>
                 <option value="">Vincular a uma mesa...</option>
                 {tables.map((table) => <option key={table.id} value={table.id}>Mesa {table.table_number} · {table.occupancy_status === "livre" ? "livre" : "em atendimento"}</option>)}
               </select>
@@ -184,7 +185,7 @@ export default function CounterCommandPanel({ surface = "staff" }) {
           </article>
         ))}
       </div>
-      <small className={styles.hint}>O número nunca muda ao sentar na mesa: C237 continua C237 no Bridge.</small>
+      <small className={styles.hint}>O código nunca muda ao sentar na mesa: C237 continua C237 no Bridge.</small>
     </section>
   );
 }
