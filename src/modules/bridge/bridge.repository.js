@@ -1,5 +1,19 @@
 import { supabaseServerRequest } from "@/src/config/supabase/server";
 
+const BRIDGE_SAFE_ERRORS = [
+  "Bridge inativo ou inexistente",
+  "OperationId obrigatorio",
+  "OperationId reutilizado com codigo diferente",
+  "Comanda nao encontrada ou encerrada",
+  "Comanda possui solicitacoes pendentes",
+  "Delivery nao encontrado ou ainda nao aceito",
+  "Pedido possui itens ainda nao aceitos",
+  "Item sem produto vinculado:",
+  "Produto sem mapeamento GeMaster:",
+  "Pedido sem itens ativos",
+  "Codigo nao pertence ao Renascer",
+];
+
 export async function findBridgeDeviceByTokenHash(tokenHash) {
   const params = new URLSearchParams({
     select: "id,name,organization_id,store_id,active,last_seen_at",
@@ -45,6 +59,7 @@ export async function prepareBridgeDispatch(payload) {
   return supabaseServerRequest("/rest/v1/rpc/prepare_gemaster_bridge_dispatch", {
     method: "POST",
     body: payload,
+    safeErrorPrefixes: BRIDGE_SAFE_ERRORS,
   });
 }
 
