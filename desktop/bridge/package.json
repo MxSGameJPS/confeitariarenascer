@@ -1,0 +1,35 @@
+{
+  "name": "renascer-bridge-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Renascer Bridge para Windows: atalho global, entrada rápida de comanda/delivery e integração segura com o backend Renascer.",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/backend-client.js && node --check src/config-store.js && node --check src/code-normalizer.js && node --check src/gemaster/adapter.js && node --check src/renderer/renderer.js",
+    "test": "node --test test/*.test.js",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.1.1",
+    "electron-builder": "26.15.7"
+  },
+  "build": {
+    "appId": "br.com.renascer.bridge",
+    "productName": "Renascer Bridge",
+    "asar": true,
+    "files": ["src/**/*", "package.json"],
+    "directories": { "output": "dist" },
+    "win": { "target": ["nsis"] },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Renascer Bridge"
+    },
+    "artifactName": "Renascer-Bridge-Setup-${version}.${ext}"
+  }
+}

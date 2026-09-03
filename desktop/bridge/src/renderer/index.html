@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Renascer Bridge</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="titlebar">
+      <div class="brand"><span class="mark">R</span><div><strong>Renascer Bridge</strong><small id="connectionLabel">Pronto para o caixa</small></div></div>
+      <div class="windowActions"><button id="settingsButton" type="button" title="Configurações">⚙</button><button id="closeButton" type="button" title="Fechar">×</button></div>
+    </header>
+    <section id="quickPanel" class="panel">
+      <label for="codeInput">Comanda ou Delivery</label>
+      <div class="codeRow"><span id="commandPrefix" class="prefix">C</span><input id="codeInput" inputmode="text" autocomplete="off" spellcheck="false" placeholder="105 ou DVXXXXXXXX" maxlength="20" /><button id="submitButton" type="button">Enviar</button></div>
+      <div id="message" class="message" data-state="idle">Digite a comanda e pressione Enter.</div>
+      <footer><span>Ctrl + Alt + R para abrir</span><span>Enter envia · Esc fecha</span></footer>
+    </section>
+    <section id="settingsPanel" class="panel settings" hidden>
+      <div class="settingsHeading"><div><strong>Configuração do dispositivo</strong><small>O token é criptografado pelo Windows e nunca é exposto à tela depois de salvo.</small></div></div>
+      <label for="apiUrl">URL do Renascer</label>
+      <input id="apiUrl" type="url" autocomplete="off" />
+      <label for="deviceToken">Token do Bridge</label>
+      <input id="deviceToken" type="password" autocomplete="new-password" placeholder="Deixe vazio para manter o token atual" />
+      <div class="settingsMeta"><span id="hotkeyStatus"></span><span id="adapterStatus"></span></div>
+      <div class="settingsActions"><button id="cancelSettings" type="button" class="secondary">Voltar</button><button id="saveSettings" type="button">Salvar</button></div>
+    </section>
+  </main>
+  <script src="./renderer.js"></script>
+</body>
+</html>
