@@ -52,33 +52,59 @@ async function findProductForWeighingById(productId) {
   return rows[0] ?? null;
 }
 
-export async function findWeighingProductByExternalCode(externalCode) {
-  const mappingParams = new URLSearchParams({
+async function findGemasterMappings(field, value, limit = 3) {
+  const params = new URLSearchParams({
     select: "id,product_id,external_code,external_reference,external_ean",
     provider: "eq.gemaster",
-    external_code: `eq.${externalCode}`,
+    [field]: `eq.${value}`,
     active: "eq.true",
     organization_id: "is.null",
     store_id: "is.null",
-    limit: "1",
+    limit: String(limit),
   });
-  const mappings = await supabaseServerRequest(`/rest/v1/product_external_mappings?${mappingParams}`);
-  const mapping = mappings[0] ?? null;
+  return supabaseServerRequest(`/rest/v1/product_external_mappings?${params}`);
+}
 
-  if (mapping) {
-    const product = await findProductForWeighingById(mapping.product_id);
-    return product ? { product, mapping } : null;
+export async function findWeighingProductByExternalCode(identifier) {
+  const normalized = String(identifier || "").trim();
+
+  // O código interno do GeMaster tem prioridade absoluta.
+  const codeMappings = await findGemasterMappings("external_code", normalized, 1);
+  if (codeMappings[0]) {
+    const product = await findProductForWeighingById(codeMappings[0].product_id);
+    return product ? { product, mapping: codeMappings[0], matchedBy: "code" } : null;
+  }
+
+  // Depois aceita a referência usada no balcão (ex.: 77 -> PIZZA).
+  const referenceMappings = await findGemasterMappings("external_reference", normalized, 3);
+  if (referenceMappings.length > 1) {
+    return { ambiguous: true, matchedBy: "reference", matches: referenceMappings };
+  }
+  if (referenceMappings[0]) {
+    const product = await findProductForWeighingById(referenceMappings[0].product_id);
+    return product ? { product, mapping: referenceMappings[0], matchedBy: "reference" } : null;
+  }
+
+  // Compatibilidade com EAN/referências numéricas já salvas no mapping.
+  const eanMappings = await findGemasterMappings("external_ean", normalized, 3);
+  if (eanMappings.length > 1) {
+    return { ambiguous: true, matchedBy: "reference", matches: eanMappings };
+  }
+  if (eanMappings[0]) {
+    const product = await findProductForWeighingById(eanMappings[0].product_id);
+    return product ? { product, mapping: eanMappings[0], matchedBy: "reference" } : null;
   }
 
   const fallbackParams = new URLSearchParams({
     select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path",
-    weighing_code: `eq.${String(externalCode).toUpperCase()}`,
+    weighing_code: `eq.${normalized.toUpperCase()}`,
     limit: "1",
   });
   const products = await supabaseServerRequest(`/rest/v1/products?${fallbackParams}`);
   const product = products[0] ?? null;
   return product ? {
     product,
+    matchedBy: "weighing_code",
     mapping: {
       external_code: product.weighing_code,
       external_reference: null,
