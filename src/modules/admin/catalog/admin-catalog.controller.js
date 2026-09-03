@@ -3,6 +3,7 @@ import {
   archiveProductService,
   createCategoryService,
   createProductService,
+  importGemasterCatalogService,
   listAdminCatalogService,
   updateCategoryService,
   updateProductService,
@@ -36,6 +37,10 @@ export async function updateProductController(id, input, actor) {
 
 export async function archiveProductController(id, actor) {
   return successResponse(await archiveProductService(id, actor));
+}
+
+export async function importGemasterCatalogController(file, actor) {
+  return successResponse(await importGemasterCatalogService(file, actor));
 }
 
 export async function uploadProductImageController(file, actor) {

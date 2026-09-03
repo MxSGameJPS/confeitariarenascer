@@ -31,8 +31,13 @@ export async function updateWeighingDevice(id, data) {
 
 export async function listWeighingProducts() {
   const params = new URLSearchParams({
-    select: "id,name,price,unit,weighing_code,pricing_mode,active,available_internal",
-    active: "eq.true", available_internal: "eq.true", pricing_mode: "eq.variable", order: "name.asc", limit: "300",
+    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal",
+    active: "eq.true",
+    available_internal: "eq.true",
+    price_configured: "eq.true",
+    pricing_mode: "eq.variable",
+    order: "name.asc",
+    limit: "300",
   });
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }

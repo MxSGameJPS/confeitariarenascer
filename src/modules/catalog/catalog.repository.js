@@ -13,8 +13,9 @@ export async function listActiveCategories() {
 export async function listActiveProducts({ featured, channel = "delivery" } = {}) {
   const params = new URLSearchParams({
     select:
-      "id,category_id,name,slug,description,price,image_path,featured,unit,sort_order,pricing_mode,available_delivery,available_internal,category:categories(id,name,slug)",
+      "id,category_id,name,slug,description,price,price_configured,image_path,featured,unit,sort_order,pricing_mode,available_delivery,available_internal,category:categories(id,name,slug)",
     active: "eq.true",
+    price_configured: "eq.true",
     order: "sort_order.asc,name.asc",
   });
 
@@ -26,4 +27,3 @@ export async function listActiveProducts({ featured, channel = "delivery" } = {}
 
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
-

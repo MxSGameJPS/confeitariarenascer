@@ -13,10 +13,11 @@ export async function listOperationalSales({ channel, status }) {
 
 export async function findProductsForSale(productIds) {
   const params = new URLSearchParams({
-    select: "id,name,price,active,stock_control,stock_quantity,pricing_mode,available_internal",
+    select: "id,name,price,price_configured,active,stock_control,stock_quantity,pricing_mode,available_internal",
     id: `in.(${productIds.join(",")})`,
     active: "eq.true",
     available_internal: "eq.true",
+    price_configured: "eq.true",
   });
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }

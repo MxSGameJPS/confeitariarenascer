@@ -1,6 +1,26 @@
 import { getSupabaseServerEnv } from "@/src/config/env";
 import { supabaseServerRequest } from "@/src/config/supabase/server";
 
+const ADMIN_PAGE_SIZE = 1000;
+const ADMIN_MAX_ROWS = 10000;
+
+async function listAll(pathFactory) {
+  const rows = [];
+
+  for (let offset = 0; offset < ADMIN_MAX_ROWS; offset += ADMIN_PAGE_SIZE) {
+    const page = await supabaseServerRequest(pathFactory(), {
+      headers: {
+        "Range-Unit": "items",
+        Range: `${offset}-${offset + ADMIN_PAGE_SIZE - 1}`,
+      },
+    });
+    rows.push(...page);
+    if (page.length < ADMIN_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
 export async function listCategoriesAdmin() {
   const params = new URLSearchParams({
     select: "id,name,slug,description,sort_order,active,created_at,updated_at",
@@ -11,10 +31,28 @@ export async function listCategoriesAdmin() {
 
 export async function listProductsAdmin() {
   const params = new URLSearchParams({
-    select: "id,category_id,name,slug,description,price,unit,image_path,featured,active,stock_control,stock_quantity,sort_order,pricing_mode,available_delivery,available_internal,created_at,updated_at,category:categories(id,name,slug)",
+    select: "id,category_id,name,slug,description,price,price_configured,unit,image_path,featured,active,stock_control,stock_quantity,sort_order,pricing_mode,available_delivery,available_internal,created_at,updated_at,category:categories(id,name,slug)",
     order: "sort_order.asc,name.asc",
   });
-  return supabaseServerRequest(`/rest/v1/products?${params}`);
+  return listAll(() => `/rest/v1/products?${params}`);
+}
+
+export async function listGemasterMappingsAdmin() {
+  const params = new URLSearchParams({
+    select: "id,product_id,external_code,external_ean,external_reference,metadata,active",
+    provider: "eq.gemaster",
+    active: "eq.true",
+    order: "external_code.asc",
+  });
+  return listAll(() => `/rest/v1/product_external_mappings?${params}`);
+}
+
+export async function importGemasterProducts(rows, actorId) {
+  return supabaseServerRequest("/rest/v1/rpc/import_gemaster_products", {
+    method: "POST",
+    body: { p_rows: rows, p_actor_id: actorId },
+    safeErrorPrefixes: ["Arquivo GeMaster", "Código GeMaster", "Produto GeMaster"],
+  });
 }
 
 export async function findCategoryBySlug(slug) {
@@ -98,4 +136,3 @@ export async function uploadProductImage({ objectPath, file }) {
 
   return objectPath;
 }
-
