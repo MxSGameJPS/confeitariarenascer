@@ -3,13 +3,16 @@ import {
   createProduct,
   findCategoryBySlug,
   findProductBySlug,
+  importGemasterProducts,
   listCategoriesAdmin,
+  listGemasterMappingsAdmin,
   listProductsAdmin,
   updateCategory,
   updateProduct,
   uploadProductImage,
   writeAuditLog,
 } from "@/src/modules/admin/catalog/admin-catalog.repository";
+import { parseGemasterCsvFile } from "@/src/modules/admin/catalog/gemaster-import";
 import { getPublicStorageUrl } from "@/src/config/supabase/server";
 import { AppError } from "@/src/shared/errors/app-error";
 
@@ -38,22 +41,40 @@ async function uniqueSlug(name, finder, currentId = null) {
   });
 }
 
-function mapProduct(product) {
+function mapProduct(product, gemasterMapping = null) {
   return {
     ...product,
     price: Number(product.price),
+    price_configured: product.price_configured !== false,
     stock_quantity: Number(product.stock_quantity),
     image_url: getPublicStorageUrl(product.image_path),
+    gemaster: gemasterMapping
+      ? {
+          code: gemasterMapping.external_code,
+          reference: gemasterMapping.external_reference ?? gemasterMapping.external_ean ?? null,
+          type_product: gemasterMapping.metadata?.type_product ?? null,
+        }
+      : null,
   };
 }
 
 export async function listAdminCatalogService() {
-  const [categories, products] = await Promise.all([
+  const [categories, products, mappings] = await Promise.all([
     listCategoriesAdmin(),
     listProductsAdmin(),
+    listGemasterMappingsAdmin(),
   ]);
+  const mappingByProduct = new Map(mappings.map((mapping) => [mapping.product_id, mapping]));
 
-  return { categories, products: products.map(mapProduct) };
+  return {
+    categories,
+    products: products.map((product) => mapProduct(product, mappingByProduct.get(product.id))),
+  };
+}
+
+export async function importGemasterCatalogService(file, actor) {
+  const rows = await parseGemasterCsvFile(file);
+  return importGemasterProducts(rows, actor.id);
 }
 
 export async function createCategoryService(input, actor) {
@@ -127,6 +148,7 @@ export async function createProductService(input, actor) {
     slug,
     description: input.description,
     price: input.price,
+    price_configured: input.priceConfigured,
     unit: input.unit,
     image_path: input.imagePath,
     featured: input.featured,
@@ -144,7 +166,7 @@ export async function createProductService(input, actor) {
     action: "product.created",
     entityType: "product",
     entityId: product.id,
-    metadata: { name: product.name, price: Number(product.price) },
+    metadata: { name: product.name, price: Number(product.price), price_configured: product.price_configured },
   });
 
   return mapProduct(product);
@@ -158,6 +180,7 @@ export async function updateProductService(id, input, actor) {
     slug,
     description: input.description,
     price: input.price,
+    price_configured: input.priceConfigured,
     unit: input.unit,
     image_path: input.imagePath,
     featured: input.featured,
@@ -179,7 +202,12 @@ export async function updateProductService(id, input, actor) {
     action: "product.updated",
     entityType: "product",
     entityId: id,
-    metadata: { name: product.name, price: Number(product.price), active: product.active },
+    metadata: {
+      name: product.name,
+      price: Number(product.price),
+      price_configured: product.price_configured,
+      active: product.active,
+    },
   });
 
   return mapProduct(product);
@@ -230,4 +258,3 @@ export async function uploadProductImageService(file, actor) {
 
   return { path: objectPath, url: getPublicStorageUrl(objectPath) };
 }
-

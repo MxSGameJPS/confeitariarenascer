@@ -6,7 +6,13 @@ export async function findPublicTable(token) {
 }
 
 export async function findPublicOrderProducts(ids) {
-  const params = new URLSearchParams({ select: "id,name,description,price,unit,image_path,pricing_mode,active,available_internal", id: `in.(${ids.join(",")})`, active: "eq.true", available_internal: "eq.true" });
+  const params = new URLSearchParams({
+    select: "id,name,description,price,price_configured,unit,image_path,pricing_mode,active,available_internal",
+    id: `in.(${ids.join(",")})`,
+    active: "eq.true",
+    available_internal: "eq.true",
+    price_configured: "eq.true",
+  });
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
 

@@ -58,7 +58,8 @@ export function validateUpdateCategory(payload) {
 export function validateCreateProduct(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados inválidos.");
 
-  const price = Number(payload.price);
+  const hasPrice = payload.price !== undefined && payload.price !== null && payload.price !== "";
+  const price = hasPrice ? Number(payload.price) : 0;
   if (!Number.isFinite(price) || price < 0 || price > 999999.99) invalid("Preço inválido.");
 
   const categoryId = payload.categoryId ? validateId(payload.categoryId) : null;
@@ -69,6 +70,7 @@ export function validateCreateProduct(payload) {
   if (!Number.isFinite(stockQuantity) || stockQuantity < 0) invalid("Estoque inválido.");
 
   const pricingMode = payload.pricingMode === "variable" ? "variable" : "fixed";
+  const priceConfigured = boolean(payload.priceConfigured, "priceConfigured", hasPrice);
   const availableDelivery = boolean(payload.availableDelivery, "availableDelivery", true);
   const availableInternal = boolean(payload.availableInternal, "availableInternal", true);
   const featured = boolean(payload.featured, "featured", false);
@@ -76,6 +78,9 @@ export function validateCreateProduct(payload) {
 
   if (availableDelivery && pricingMode === "variable") {
     invalid("Produtos pesados não podem entrar no cardápio de delivery.");
+  }
+  if (availableDelivery && !priceConfigured) {
+    invalid("Defina o preço antes de disponibilizar o produto no delivery.");
   }
   if (featured && !availableDelivery) {
     invalid("Somente produtos do delivery podem ser exibidos em destaque no site.");
@@ -89,6 +94,7 @@ export function validateCreateProduct(payload) {
     name: text(payload.name, "name", { required: true, max: 140 }),
     description: text(payload.description, "description", { max: 500 }),
     price: Number(price.toFixed(2)),
+    priceConfigured,
     unit: text(payload.unit, "unit", { max: 20 }) || "un",
     imagePath: text(payload.imagePath, "imagePath", { max: 500 }),
     featured,
@@ -105,4 +111,3 @@ export function validateCreateProduct(payload) {
 export function validateUpdateProduct(payload) {
   return validateCreateProduct(payload);
 }
-
