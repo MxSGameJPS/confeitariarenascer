@@ -1,6 +1,7 @@
 import { successResponse } from "@/src/shared/http/api-response";
 import {
   createWeighingDeviceService,
+  getOrOpenStaffWeighingCommandService,
   getStaffWeighingProductService,
   getWeighingCommandService,
   listWeighingDevicesService,
@@ -16,6 +17,10 @@ export async function listWeighingProductsController(query) {
 
 export async function getWeighingCommandController(orderNumber) {
   return successResponse(await getWeighingCommandService(orderNumber));
+}
+
+export async function getOrOpenStaffWeighingCommandController(commandNumber, input, actor) {
+  return successResponse(await getOrOpenStaffWeighingCommandService(commandNumber, input, actor));
 }
 
 export async function getStaffWeighingProductController(code) {
