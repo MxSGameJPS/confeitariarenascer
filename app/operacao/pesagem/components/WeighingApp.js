@@ -129,11 +129,19 @@ export default function WeighingApp({ employee }) {
 
     try {
       setBusy("command");
-      const result = await request(`/api/operacao/pesagem/comandas/${parsed}`);
+      const result = await request(`/api/operacao/pesagem/comandas/${parsed}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationId: crypto.randomUUID() }),
+      });
       setCommand(result);
-      setCommandNumber(String(result.order_number));
+      setCommandNumber(String(result.command_number ?? parsed));
       resetProductStep();
-      setMessage(`Comanda C${result.order_number} pronta para receber itens.`);
+      setMessage(
+        result.created
+          ? `Comanda C${result.command_number ?? parsed} iniciada no balcão e pronta para receber itens.`
+          : `Comanda C${result.command_number ?? parsed} pronta para receber itens.`,
+      );
       window.setTimeout(() => productInputRef.current?.focus(), 0);
     } catch (err) {
       setError(err.message);
@@ -153,7 +161,7 @@ export default function WeighingApp({ employee }) {
 
     const code = productCode.trim();
     if (!code) {
-      setError("Digite o código do produto.");
+      setError("Digite o código ou a referência do produto.");
       return;
     }
 
@@ -166,10 +174,14 @@ export default function WeighingApp({ employee }) {
       setBusy("product");
       const result = await request(`/api/operacao/pesagem/produtos?code=${encodeURIComponent(code)}`);
       setProduct(result);
-      setProductCode(result.code || code);
+      setProductCode(code);
       setWeight("");
       pendingOperationRef.current = null;
-      setMessage(`${result.name} localizado.`);
+      setMessage(
+        result.matchedBy === "reference"
+          ? `${result.name} localizado pela referência ${code}.`
+          : `${result.name} localizado.`,
+      );
       window.setTimeout(() => weightInputRef.current?.focus(), 0);
     } catch (err) {
       setProduct(null);
@@ -239,22 +251,22 @@ export default function WeighingApp({ employee }) {
       ));
 
       if (mode === "continue") {
-        const currentCommand = command.order_number;
+        const currentCommand = command.command_number;
         resetProductStep();
         setMessage(
           result.duplicate
             ? `Item já estava inserido na C${currentCommand}. Pode pesar o próximo.`
-            : `${inserted.product_name} adicionado à C${currentCommand}. Pode pesar o próximo.`
+            : `${inserted.product_name} adicionado à C${currentCommand}. Pode pesar o próximo.`,
         );
         window.setTimeout(() => productInputRef.current?.focus(), 0);
       } else {
-        const currentCommand = command.order_number;
+        const currentCommand = command.command_number;
         const productName = inserted.product_name;
         resetSession();
         setMessage(
           result.duplicate
             ? `Item já estava inserido na C${currentCommand}. Pronto para a próxima comanda.`
-            : `${productName} adicionado à C${currentCommand}. Pesagem finalizada.`
+            : `${productName} adicionado à C${currentCommand}. Pesagem finalizada.`,
         );
       }
     } catch (err) {
@@ -319,7 +331,7 @@ export default function WeighingApp({ employee }) {
               <span>1</span>
               <div>
                 <strong>Comanda</strong>
-                <small>Digite somente o número. O prefixo C é automático.</small>
+                <small>Digite somente o número. Se ainda não estiver aberta, o balcão inicia a comanda automaticamente.</small>
               </div>
             </div>
 
@@ -342,14 +354,14 @@ export default function WeighingApp({ employee }) {
                   />
                 </label>
                 <button type="submit" disabled={busy === "command" || !online}>
-                  {busy === "command" ? "Validando..." : "Confirmar comanda"}
+                  {busy === "command" ? "Preparando..." : "Usar comanda"}
                 </button>
               </form>
             ) : (
               <div className={styles.commandSelected}>
                 <div>
                   <small>COMANDA ATUAL</small>
-                  <strong>C{command.order_number}</strong>
+                  <strong>{command.command_code || `C${command.command_number}`}</strong>
                   <span>
                     {command.table?.table_number ? `Mesa ${command.table.table_number}` : "Atendimento de balcão"}
                     {" · "}
@@ -368,7 +380,7 @@ export default function WeighingApp({ employee }) {
               <span>2</span>
               <div>
                 <strong>Produto</strong>
-                <small>Use o código do produto cadastrado no GeMaster.</small>
+                <small>Digite o código GeMaster ou a referência usada no balcão, como 51974 ou 77.</small>
               </div>
             </div>
 
@@ -386,8 +398,8 @@ export default function WeighingApp({ employee }) {
                   pendingOperationRef.current = null;
                   clearFeedback();
                 }}
-                placeholder="Código do produto"
-                aria-label="Código do produto"
+                placeholder="Código ou referência"
+                aria-label="Código ou referência do produto"
               />
               <button type="submit" disabled={!command || !productCode.trim() || busy === "product" || !online}>
                 {busy === "product" ? "Buscando..." : "Buscar produto"}
@@ -484,7 +496,7 @@ export default function WeighingApp({ employee }) {
           <div className={styles.summaryHead}>
             <div>
               <small>SESSÃO ATUAL</small>
-              <strong>{command ? `Comanda C${command.order_number}` : "Nenhuma comanda"}</strong>
+              <strong>{command ? `Comanda ${command.command_code || `C${command.command_number}`}` : "Nenhuma comanda"}</strong>
             </div>
             <span>{sessionItems.length} {sessionItems.length === 1 ? "item" : "itens"}</span>
           </div>
