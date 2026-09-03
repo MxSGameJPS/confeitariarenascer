@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("renascerBridge", {
   submitCode: (value) => ipcRenderer.invoke("bridge:submit-code", value),
   hide: () => ipcRenderer.send("bridge:hide"),
   openSettings: () => ipcRenderer.send("bridge:open-settings"),
+  setMode: (mode) => ipcRenderer.send("bridge:set-mode", mode),
   onFocusEntry: (callback) => {
     const listener = () => callback();
     ipcRenderer.on("bridge:focus-entry", listener);

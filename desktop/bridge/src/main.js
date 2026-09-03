@@ -14,6 +14,7 @@ let configStore = null;
 let backendClient = null;
 let gemasterAdapter = null;
 let hotkeyRegistered = false;
+const operationByCode = new Map();
 
 function createBrandImage(size = 32) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2d6a4f"/><path d="M9 24V8h8.1c4 0 6.5 2.1 6.5 5.4 0 2.4-1.3 4.1-3.6 4.9L24 24h-5.2l-3.2-5H14v5H9zm5-9h2.8c1.3 0 2-.5 2-1.6 0-1-.7-1.5-2-1.5H14V15z" fill="white"/></svg>`;
@@ -25,8 +26,15 @@ function sendFocus() {
   quickWindow.webContents.send("bridge:focus-entry");
 }
 
+function setWindowMode(mode) {
+  if (!quickWindow || quickWindow.isDestroyed()) return;
+  const height = mode === "settings" ? 390 : 300;
+  quickWindow.setSize(440, height, true);
+}
+
 function showQuickWindow({ settings = false } = {}) {
   if (!quickWindow || quickWindow.isDestroyed()) return;
+  setWindowMode(settings ? "settings" : "quick");
   quickWindow.show();
   quickWindow.setAlwaysOnTop(true, "pop-up-menu");
   quickWindow.focus();
@@ -105,12 +113,14 @@ function registerIpc() {
 
   ipcMain.handle("bridge:submit-code", async (_event, input) => {
     const code = normalizeBridgeCode(input);
-    const operationId = randomUUID();
+    const operationId = operationByCode.get(code) || randomUUID();
+    operationByCode.set(code, operationId);
     const dispatch = await backendClient.resolve(code, operationId);
     const injection = await gemasterAdapter.inject(dispatch);
 
     if (injection.state === "injected") {
       await backendClient.updateDispatch(dispatch.dispatch_id, "injected");
+      operationByCode.delete(code);
       return { ok: true, state: "injected", code, message: `${code} enviada ao GeMaster.`, autoHide: true };
     }
 
@@ -119,6 +129,7 @@ function registerIpc() {
 
   ipcMain.on("bridge:hide", hideQuickWindow);
   ipcMain.on("bridge:open-settings", () => showQuickWindow({ settings: true }));
+  ipcMain.on("bridge:set-mode", (_event, mode) => setWindowMode(mode === "settings" ? "settings" : "quick"));
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -131,9 +142,9 @@ if (!gotLock) {
     backendClient = new BackendClient(() => configStore.getPrivateConfig());
     gemasterAdapter = createGemasterAdapter();
     registerHotkey();
+    registerIpc();
     createWindow();
     createTray();
-    registerIpc();
 
     if (app.isPackaged) {
       app.setLoginItemSettings({ openAtLogin: true, path: process.execPath, args: ["--background"] });

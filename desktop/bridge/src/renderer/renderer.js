@@ -22,8 +22,8 @@ function updatePrefix() {
   commandPrefix.dataset.hidden = value.startsWith("DV") || value.startsWith("C") ? "true" : "false";
 }
 function focusCode() { if (settingsPanel.hidden) { codeInput.focus(); codeInput.select(); } }
-function showSettings() { quickPanel.hidden = true; settingsPanel.hidden = false; deviceToken.value = ""; apiUrl.focus(); }
-function hideSettings() { if (!configured) return; settingsPanel.hidden = true; quickPanel.hidden = false; focusCode(); }
+function showSettings() { window.renascerBridge.setMode("settings"); quickPanel.hidden = true; settingsPanel.hidden = false; deviceToken.value = ""; apiUrl.focus(); }
+function hideSettings() { if (!configured) return; window.renascerBridge.setMode("quick"); settingsPanel.hidden = true; quickPanel.hidden = false; focusCode(); }
 
 async function refreshConfig() {
   try {
