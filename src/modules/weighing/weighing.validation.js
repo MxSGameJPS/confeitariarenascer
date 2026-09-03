@@ -12,6 +12,12 @@ export function validateWeighingCommandNumber(value) {
   return parsed;
 }
 
+export function validateStaffWeighingCommandOpen(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados da comanda inválidos.");
+  if (typeof payload.operationId !== "string" || !UUID_PATTERN.test(payload.operationId)) invalid("OperationId inválido.");
+  return { operationId: payload.operationId };
+}
+
 export function validateWeighingItem(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados da pesagem inválidos.");
   if (typeof payload.productId !== "string" || !UUID_PATTERN.test(payload.productId)) invalid("Produto inválido.");
