@@ -42,14 +42,18 @@ export async function listWeighingProducts() {
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
 
-async function findProductForWeighingById(productId) {
+async function findProductForCounterById(productId) {
   const params = new URLSearchParams({
-    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path",
+    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path,stock_control,stock_quantity",
     id: `eq.${productId}`,
     limit: "1",
   });
   const rows = await supabaseServerRequest(`/rest/v1/products?${params}`);
   return rows[0] ?? null;
+}
+
+export async function findStaffCounterProductById(productId) {
+  return findProductForCounterById(productId);
 }
 
 async function findGemasterMappings(field, value, limit = 3) {
@@ -68,15 +72,9 @@ async function findGemasterMappings(field, value, limit = 3) {
 async function findReferenceMappings(identifier) {
   const normalized = String(identifier || "").trim();
 
-  // Primeiro respeita exatamente o que veio do GeMaster.
-  // Ex.: referência 77 continua sendo 77.
   const exact = await findGemasterMappings("external_reference", normalized, 3);
   if (exact.length) return exact;
 
-  // As referências internas de produtos de produção são gravadas com 6 dígitos.
-  // No balcão, porém, a equipe digita apenas o número conhecido:
-  // 01 -> 000001, 10 -> 000010, 32 -> 000032.
-  // Não tentamos todas as combinações intermediárias porque isso cria falsas ambiguidades.
   if (/^\d+$/.test(normalized) && normalized.length < 6) {
     const numericValue = normalized.replace(/^0+(?=\d)/, "") || "0";
     const padded = numericValue.padStart(6, "0");
@@ -91,36 +89,32 @@ async function findReferenceMappings(identifier) {
 export async function findWeighingProductByExternalCode(identifier) {
   const normalized = String(identifier || "").trim();
 
-  // O código interno do GeMaster tem prioridade absoluta.
   const codeMappings = await findGemasterMappings("external_code", normalized, 1);
   if (codeMappings[0]) {
-    const product = await findProductForWeighingById(codeMappings[0].product_id);
+    const product = await findProductForCounterById(codeMappings[0].product_id);
     return product ? { product, mapping: codeMappings[0], matchedBy: "code" } : null;
   }
 
-  // Depois aceita a referência usada no balcão.
-  // Ex.: 77 -> PIZZA e 01 -> referência 000001 do PÃO FRANCÊS.
   const referenceMappings = await findReferenceMappings(normalized);
   if (referenceMappings.length > 1) {
     return { ambiguous: true, matchedBy: "reference", matches: referenceMappings };
   }
   if (referenceMappings[0]) {
-    const product = await findProductForWeighingById(referenceMappings[0].product_id);
+    const product = await findProductForCounterById(referenceMappings[0].product_id);
     return product ? { product, mapping: referenceMappings[0], matchedBy: "reference" } : null;
   }
 
-  // Compatibilidade com EAN digitado exatamente como cadastrado.
   const eanMappings = await findGemasterMappings("external_ean", normalized, 3);
   if (eanMappings.length > 1) {
     return { ambiguous: true, matchedBy: "reference", matches: eanMappings };
   }
   if (eanMappings[0]) {
-    const product = await findProductForWeighingById(eanMappings[0].product_id);
+    const product = await findProductForCounterById(eanMappings[0].product_id);
     return product ? { product, mapping: eanMappings[0], matchedBy: "reference" } : null;
   }
 
   const fallbackParams = new URLSearchParams({
-    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path",
+    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path,stock_control,stock_quantity",
     weighing_code: `eq.${normalized.toUpperCase()}`,
     limit: "1",
   });
@@ -193,6 +187,23 @@ export async function registerStaffWeighingItem(payload) {
       "OperationId",
       "Funcionario",
       "Valor calculado",
+    ],
+  });
+}
+
+export async function registerStaffFixedCounterItem(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/register_staff_fixed_counter_item_transaction", {
+    method: "POST",
+    body: payload,
+    safeErrorPrefixes: [
+      "Numero da comanda",
+      "Comanda",
+      "Produto",
+      "Quantidade",
+      "OperationId",
+      "Funcionario",
+      "Valor calculado",
+      "Estoque insuficiente",
     ],
   });
 }
