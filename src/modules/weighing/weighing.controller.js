@@ -6,7 +6,7 @@ import {
   getWeighingCommandService,
   listWeighingDevicesService,
   listWeighingProductsService,
-  registerStaffWeighingItemService,
+  registerStaffCounterItemService,
   registerWeighingItemService,
   updateWeighingDeviceService,
 } from "@/src/modules/weighing/weighing.service";
@@ -31,8 +31,8 @@ export async function registerWeighingItemController(orderNumber, input, device)
   return successResponse(await registerWeighingItemService(orderNumber, input, device), 201);
 }
 
-export async function registerStaffWeighingItemController(input, actor) {
-  return successResponse(await registerStaffWeighingItemService(input, actor), 201);
+export async function registerStaffCounterItemController(input, actor) {
+  return successResponse(await registerStaffCounterItemService(input, actor), 201);
 }
 
 export async function listWeighingDevicesController() {
