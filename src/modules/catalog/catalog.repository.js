@@ -27,3 +27,14 @@ export async function listActiveProducts({ featured, channel = "delivery" } = {}
 
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
+
+export async function searchOperationalProducts(query, limit = 20) {
+  return supabaseServerRequest("/rest/v1/rpc/search_operational_products", {
+    method: "POST",
+    body: {
+      p_query: query,
+      p_limit: limit,
+    },
+    safeErrorPrefixes: ["Busca de produto invalida"],
+  });
+}
