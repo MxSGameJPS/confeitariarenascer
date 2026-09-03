@@ -65,6 +65,29 @@ async function findGemasterMappings(field, value, limit = 3) {
   return supabaseServerRequest(`/rest/v1/product_external_mappings?${params}`);
 }
 
+async function findReferenceMappings(identifier) {
+  const normalized = String(identifier || "").trim();
+  const candidates = [normalized];
+
+  if (/^\d+$/.test(normalized)) {
+    const withoutLeadingZeros = normalized.replace(/^0+(?=\d)/, "");
+    if (withoutLeadingZeros && !candidates.includes(withoutLeadingZeros)) candidates.push(withoutLeadingZeros);
+    if (normalized.length < 6) {
+      const padded = normalized.padStart(6, "0");
+      if (!candidates.includes(padded)) candidates.push(padded);
+    }
+  }
+
+  const byId = new Map();
+  for (const candidate of candidates) {
+    const rows = await findGemasterMappings("external_reference", candidate, 3);
+    for (const row of rows) byId.set(row.id, row);
+    if (byId.size > 1) break;
+  }
+
+  return [...byId.values()];
+}
+
 export async function findWeighingProductByExternalCode(identifier) {
   const normalized = String(identifier || "").trim();
 
@@ -76,7 +99,8 @@ export async function findWeighingProductByExternalCode(identifier) {
   }
 
   // Depois aceita a referência usada no balcão (ex.: 77 -> PIZZA).
-  const referenceMappings = await findGemasterMappings("external_reference", normalized, 3);
+  // Também aceita 10 quando a referência original vier como 000010.
+  const referenceMappings = await findReferenceMappings(normalized);
   if (referenceMappings.length > 1) {
     return { ambiguous: true, matchedBy: "reference", matches: referenceMappings };
   }
