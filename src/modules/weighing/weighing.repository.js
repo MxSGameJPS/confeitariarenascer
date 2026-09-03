@@ -96,6 +96,37 @@ export async function findOpenCommandByNumber(orderNumber) {
   return rows[0] ?? null;
 }
 
+export async function findOpenStaffCommandByPhysicalNumber(commandNumber) {
+  const commandCode = `C${commandNumber}`;
+  const params = new URLSearchParams({
+    select: "id,order_number,status,command_label,total,table:dining_tables(id,table_number)",
+    command_label: `eq.${commandCode}`,
+    channel: "eq.comanda",
+    status: "eq.aberto",
+    order: "created_at.desc",
+    limit: "1",
+  });
+  const rows = await supabaseServerRequest(`/rest/v1/orders?${params}`);
+  return rows[0] ?? null;
+}
+
+export async function openStaffCounterCommand({ commandNumber, operationId, actor }) {
+  return supabaseServerRequest("/rest/v1/rpc/open_counter_command_transaction", {
+    method: "POST",
+    body: {
+      p_command_label: `C${commandNumber}`,
+      p_operation_key: operationId,
+      p_actor_kind: "employee",
+      p_actor_id: actor.id,
+    },
+    safeErrorPrefixes: [
+      "OperationId",
+      "Operador",
+      "Identificacao da comanda",
+    ],
+  });
+}
+
 export async function registerWeighingItem(payload) {
   return supabaseServerRequest("/rest/v1/rpc/register_weighing_item_transaction", { method: "POST", body: payload });
 }
