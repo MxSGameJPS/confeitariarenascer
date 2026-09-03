@@ -64,13 +64,21 @@ export async function getOrOpenStaffWeighingCommandService(commandNumber, input,
   };
 }
 
-export async function getStaffWeighingProductService(code) {
-  const result = await findWeighingProductByExternalCode(code);
-  if (!result?.product) {
-    throw new AppError("Produto não encontrado pelo código informado.", { statusCode: 404, code: "WEIGHING_PRODUCT_NOT_FOUND" });
+export async function getStaffWeighingProductService(identifier) {
+  const result = await findWeighingProductByExternalCode(identifier);
+
+  if (result?.ambiguous) {
+    throw new AppError(
+      `A referência ${identifier} está vinculada a mais de um produto. Use o código GeMaster para identificar o item.`,
+      { statusCode: 409, code: "WEIGHING_PRODUCT_REFERENCE_AMBIGUOUS" },
+    );
   }
 
-  const { product, mapping } = result;
+  if (!result?.product) {
+    throw new AppError("Produto não encontrado pelo código ou referência informada.", { statusCode: 404, code: "WEIGHING_PRODUCT_NOT_FOUND" });
+  }
+
+  const { product, mapping, matchedBy } = result;
   if (!product.active || !product.available_internal) {
     throw new AppError("Produto indisponível para venda interna.", { statusCode: 409, code: "WEIGHING_PRODUCT_UNAVAILABLE" });
   }
@@ -86,6 +94,7 @@ export async function getStaffWeighingProductService(code) {
     name: product.name,
     code: mapping.external_code || product.weighing_code,
     reference: mapping.external_reference || mapping.external_ean || null,
+    matchedBy,
     pricePerKg: Number(product.price),
     unit: product.unit || "kg",
     imageUrl: getPublicStorageUrl(product.image_path),
