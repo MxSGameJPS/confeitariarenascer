@@ -1,5 +1,6 @@
 import { successResponse } from "@/src/shared/http/api-response";
 import {
+  confirmBridgeSettlementService,
   createBridgeDeviceService,
   listBridgeDevicesService,
   listGemasterMappingsService,
@@ -15,6 +16,10 @@ export async function resolveBridgeCodeController(input, device) {
 
 export async function updateBridgeDispatchStatusController(id, input, device) {
   return successResponse(await updateBridgeDispatchStatusService(id, input, device));
+}
+
+export async function confirmBridgeSettlementController(id, input, device) {
+  return successResponse(await confirmBridgeSettlementService(id, input, device));
 }
 
 export async function listBridgeDevicesController() {
