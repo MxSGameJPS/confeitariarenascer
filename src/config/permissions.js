@@ -23,6 +23,7 @@ export const PERMISSIONS = Object.freeze({
   TABLES_VIEW: "tables.view",
   TABLES_CREATE: "tables.create",
   TABLES_STATUS: "tables.status",
+  WEIGHING_ACCESS: "weighing.access",
   WEIGHING_DEVICES_MANAGE: "weighing_devices.manage",
   BRIDGE_MANAGE: "bridge.manage",
 });
@@ -42,6 +43,7 @@ const ROLE_PERMISSIONS = Object.freeze({
     PERMISSIONS.SALES_CANCEL_ITEM,
     PERMISSIONS.TABLES_VIEW,
     PERMISSIONS.TABLES_STATUS,
+    PERMISSIONS.WEIGHING_ACCESS,
   ]),
   [ROLES.ATENDENTE]: new Set([
     PERMISSIONS.DELIVERY_ACCEPT,
@@ -49,6 +51,7 @@ const ROLE_PERMISSIONS = Object.freeze({
     PERMISSIONS.POS_ACCESS,
     PERMISSIONS.POS_SELL,
     PERMISSIONS.TABLES_VIEW,
+    PERMISSIONS.WEIGHING_ACCESS,
   ]),
 });
 

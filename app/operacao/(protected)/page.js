@@ -1,10 +1,11 @@
 import { requireStaffSession } from "@/src/shared/auth/staff-session";
-import { ROLES } from "@/src/config/permissions";
+import { PERMISSIONS, ROLES, hasPermission } from "@/src/config/permissions";
 import styles from "./page.module.css";
 
 export default async function OperationHomePage() {
   const session = await requireStaffSession();
   const isManager = session.role === ROLES.GERENTE;
+  const canWeigh = hasPermission(session.role, PERMISSIONS.WEIGHING_ACCESS);
 
   return (
     <div className={styles.page}>
@@ -17,6 +18,7 @@ export default async function OperationHomePage() {
       <section className={styles.cards}>
         {!isManager && <article><small>DELIVERY</small><strong>Pedidos</strong><p>Aceite e acompanhe os pedidos recebidos pelo site.</p><a href="/operacao/delivery">Abrir delivery</a></article>}
         {!isManager && <article><small>MESAS</small><strong>Comandas</strong><p>Abra, receba e feche as comandas internas.</p><a href="/operacao/comandas">Abrir comandas</a></article>}
+        {canWeigh && <article><small>PESAGEM</small><strong>Produtos por peso</strong><p>Informe comanda, produto e peso para lançar o valor calculado automaticamente.</p><a href="/operacao/pesagem">Abrir pesagem</a></article>}
         <article><small>CAIXA</small><strong>Venda avulsa</strong><p>Registre venda presencial, pagamento e responsável.</p><a href="/operacao/caixa">Abrir caixa</a></article>
         {isManager && <article><small>GESTÃO</small><strong>Funcionários</strong><p>Cadastre e mantenha os acessos da equipe.</p><a href="/operacao/funcionarios">Abrir gestão</a></article>}
       </section>

@@ -1,9 +1,12 @@
 import { AppError } from "@/src/shared/errors/app-error";
+import { getPublicStorageUrl } from "@/src/config/supabase/server";
 import {
   createWeighingDevice,
   findOpenCommandByNumber,
+  findWeighingProductByExternalCode,
   listWeighingDevices,
   listWeighingProducts,
+  registerStaffWeighingItem,
   registerWeighingItem,
   updateWeighingDevice,
   writeWeighingAdminAudit,
@@ -29,6 +32,34 @@ export async function getWeighingCommandService(orderNumber) {
   return { ...command, total: Number(command.total) };
 }
 
+export async function getStaffWeighingProductService(code) {
+  const result = await findWeighingProductByExternalCode(code);
+  if (!result?.product) {
+    throw new AppError("Produto não encontrado pelo código informado.", { statusCode: 404, code: "WEIGHING_PRODUCT_NOT_FOUND" });
+  }
+
+  const { product, mapping } = result;
+  if (!product.active || !product.available_internal) {
+    throw new AppError("Produto indisponível para venda interna.", { statusCode: 409, code: "WEIGHING_PRODUCT_UNAVAILABLE" });
+  }
+  if (product.pricing_mode !== "variable") {
+    throw new AppError("Este produto não está configurado para venda por peso.", { statusCode: 409, code: "WEIGHING_PRODUCT_NOT_VARIABLE" });
+  }
+  if (product.price_configured === false || !Number.isFinite(Number(product.price)) || Number(product.price) <= 0) {
+    throw new AppError("Preço por kg ainda não configurado para este produto.", { statusCode: 409, code: "WEIGHING_PRICE_PENDING" });
+  }
+
+  return {
+    id: product.id,
+    name: product.name,
+    code: mapping.external_code || product.weighing_code,
+    reference: mapping.external_reference || mapping.external_ean || null,
+    pricePerKg: Number(product.price),
+    unit: product.unit || "kg",
+    imageUrl: getPublicStorageUrl(product.image_path),
+  };
+}
+
 export async function registerWeighingItemService(orderNumber, input, device) {
   const result = await registerWeighingItem({
     p_order_number: orderNumber,
@@ -36,6 +67,23 @@ export async function registerWeighingItemService(orderNumber, input, device) {
     p_weight_kg: input.weightKg,
     p_operation_key: input.operationId,
     p_device_id: device.id,
+  });
+  return {
+    ...result,
+    weight_kg: Number(result.weight_kg),
+    price_per_kg: Number(result.price_per_kg),
+    item_total: Number(result.item_total),
+    order_total: Number(result.order_total),
+  };
+}
+
+export async function registerStaffWeighingItemService(input, actor) {
+  const result = await registerStaffWeighingItem({
+    p_order_number: input.orderNumber,
+    p_product_id: input.productId,
+    p_weight_kg: input.weightKg,
+    p_operation_key: input.operationId,
+    p_employee_id: actor.id,
   });
   return {
     ...result,

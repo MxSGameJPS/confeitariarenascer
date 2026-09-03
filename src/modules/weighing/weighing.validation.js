@@ -21,9 +21,23 @@ export function validateWeighingItem(payload) {
   return { productId: payload.productId, operationId: payload.operationId, weightKg: Number(weightKg.toFixed(3)) };
 }
 
+export function validateStaffWeighingItem(payload) {
+  const item = validateWeighingItem(payload);
+  return {
+    ...item,
+    orderNumber: validateWeighingCommandNumber(payload.orderNumber),
+  };
+}
+
 export function validateWeighingProductQuery(searchParams) {
   const query = String(searchParams.get("query") || "").trim().slice(0, 80);
   return query;
+}
+
+export function validateWeighingProductCode(value) {
+  const code = String(value || "").trim();
+  if (!code || code.length > 64) invalid("Código do produto inválido.");
+  return code;
 }
 
 export function validateCreateWeighingDevice(payload) {

@@ -42,6 +42,51 @@ export async function listWeighingProducts() {
   return supabaseServerRequest(`/rest/v1/products?${params}`);
 }
 
+async function findProductForWeighingById(productId) {
+  const params = new URLSearchParams({
+    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path",
+    id: `eq.${productId}`,
+    limit: "1",
+  });
+  const rows = await supabaseServerRequest(`/rest/v1/products?${params}`);
+  return rows[0] ?? null;
+}
+
+export async function findWeighingProductByExternalCode(externalCode) {
+  const mappingParams = new URLSearchParams({
+    select: "id,product_id,external_code,external_reference,external_ean",
+    provider: "eq.gemaster",
+    external_code: `eq.${externalCode}`,
+    active: "eq.true",
+    organization_id: "is.null",
+    store_id: "is.null",
+    limit: "1",
+  });
+  const mappings = await supabaseServerRequest(`/rest/v1/product_external_mappings?${mappingParams}`);
+  const mapping = mappings[0] ?? null;
+
+  if (mapping) {
+    const product = await findProductForWeighingById(mapping.product_id);
+    return product ? { product, mapping } : null;
+  }
+
+  const fallbackParams = new URLSearchParams({
+    select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path",
+    weighing_code: `eq.${String(externalCode).toUpperCase()}`,
+    limit: "1",
+  });
+  const products = await supabaseServerRequest(`/rest/v1/products?${fallbackParams}`);
+  const product = products[0] ?? null;
+  return product ? {
+    product,
+    mapping: {
+      external_code: product.weighing_code,
+      external_reference: null,
+      external_ean: null,
+    },
+  } : null;
+}
+
 export async function findOpenCommandByNumber(orderNumber) {
   const params = new URLSearchParams({
     select: "id,order_number,status,command_label,total,table:dining_tables(id,table_number)",
@@ -53,6 +98,22 @@ export async function findOpenCommandByNumber(orderNumber) {
 
 export async function registerWeighingItem(payload) {
   return supabaseServerRequest("/rest/v1/rpc/register_weighing_item_transaction", { method: "POST", body: payload });
+}
+
+export async function registerStaffWeighingItem(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/register_staff_weighing_item_transaction", {
+    method: "POST",
+    body: payload,
+    safeErrorPrefixes: [
+      "Numero da comanda",
+      "Comanda",
+      "Produto",
+      "Peso",
+      "OperationId",
+      "Funcionario",
+      "Valor calculado",
+    ],
+  });
 }
 
 export async function writeWeighingAdminAudit(actorId, action, entityId, metadata = {}) {

@@ -1,9 +1,11 @@
 import { successResponse } from "@/src/shared/http/api-response";
 import {
   createWeighingDeviceService,
+  getStaffWeighingProductService,
   getWeighingCommandService,
   listWeighingDevicesService,
   listWeighingProductsService,
+  registerStaffWeighingItemService,
   registerWeighingItemService,
   updateWeighingDeviceService,
 } from "@/src/modules/weighing/weighing.service";
@@ -16,8 +18,16 @@ export async function getWeighingCommandController(orderNumber) {
   return successResponse(await getWeighingCommandService(orderNumber));
 }
 
+export async function getStaffWeighingProductController(code) {
+  return successResponse(await getStaffWeighingProductService(code));
+}
+
 export async function registerWeighingItemController(orderNumber, input, device) {
   return successResponse(await registerWeighingItemService(orderNumber, input, device), 201);
+}
+
+export async function registerStaffWeighingItemController(input, actor) {
+  return successResponse(await registerStaffWeighingItemService(input, actor), 201);
 }
 
 export async function listWeighingDevicesController() {
