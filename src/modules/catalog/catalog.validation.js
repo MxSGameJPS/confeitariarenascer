@@ -22,7 +22,27 @@ export function validateListProducts(searchParams) {
   };
 }
 
+export function validateOperationalProductSearch(searchParams) {
+  const query = String(searchParams.get("query") || "").trim();
+  const context = String(searchParams.get("context") || "pos").trim();
+
+  if (!query || query.length > 80) {
+    throw new AppError("Informe código, referência ou nome do produto.", {
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  }
+
+  if (!new Set(["pos", "comanda"]).has(context)) {
+    throw new AppError("Contexto de busca inválido.", {
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  }
+
+  return { query, context, limit: 20 };
+}
+
 export function validateListCategories() {
   return {};
 }
-
