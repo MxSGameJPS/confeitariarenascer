@@ -4,10 +4,12 @@ import {
   createWeighingDevice,
   findOpenCommandByNumber,
   findOpenStaffCommandByPhysicalNumber,
+  findStaffCounterProductById,
   findWeighingProductByExternalCode,
   listWeighingDevices,
   listWeighingProducts,
   openStaffCounterCommand,
+  registerStaffFixedCounterItem,
   registerStaffWeighingItem,
   registerWeighingItem,
   updateWeighingDevice,
@@ -64,12 +66,24 @@ export async function getOrOpenStaffWeighingCommandService(commandNumber, input,
   };
 }
 
+function assertStaffCounterProduct(product) {
+  if (!product?.active || !product.available_internal) {
+    throw new AppError("Produto indisponível para venda interna.", { statusCode: 409, code: "COUNTER_PRODUCT_UNAVAILABLE" });
+  }
+  if (!product.price_configured || !Number.isFinite(Number(product.price)) || Number(product.price) <= 0) {
+    throw new AppError("Preço ainda não configurado para este produto.", { statusCode: 409, code: "COUNTER_PRODUCT_PRICE_PENDING" });
+  }
+  if (!['fixed', 'variable'].includes(product.pricing_mode)) {
+    throw new AppError("Forma de preço inválida para este produto.", { statusCode: 409, code: "COUNTER_PRODUCT_PRICING_INVALID" });
+  }
+}
+
 export async function getStaffWeighingProductService(identifier) {
   const result = await findWeighingProductByExternalCode(identifier);
 
   if (result?.ambiguous) {
     throw new AppError(
-      `A referência ${identifier} está vinculada a mais de um produto. Use o código GeMaster para identificar o item.`,
+      `A referência ${identifier} está vinculada a mais de um produto. Revise o cadastro da referência no GeMaster.`,
       { statusCode: 409, code: "WEIGHING_PRODUCT_REFERENCE_AMBIGUOUS" },
     );
   }
@@ -79,15 +93,10 @@ export async function getStaffWeighingProductService(identifier) {
   }
 
   const { product, mapping, matchedBy } = result;
-  if (!product.active || !product.available_internal) {
-    throw new AppError("Produto indisponível para venda interna.", { statusCode: 409, code: "WEIGHING_PRODUCT_UNAVAILABLE" });
-  }
-  if (product.pricing_mode !== "variable") {
-    throw new AppError("Este produto não está configurado para venda por peso.", { statusCode: 409, code: "WEIGHING_PRODUCT_NOT_VARIABLE" });
-  }
-  if (product.price_configured === false || !Number.isFinite(Number(product.price)) || Number(product.price) <= 0) {
-    throw new AppError("Preço por kg ainda não configurado para este produto.", { statusCode: 409, code: "WEIGHING_PRICE_PENDING" });
-  }
+  assertStaffCounterProduct(product);
+
+  const price = Number(product.price);
+  const pricingMode = product.pricing_mode;
 
   return {
     id: product.id,
@@ -95,8 +104,11 @@ export async function getStaffWeighingProductService(identifier) {
     code: mapping.external_code || product.weighing_code,
     reference: mapping.external_reference || mapping.external_ean || null,
     matchedBy,
-    pricePerKg: Number(product.price),
-    unit: product.unit || "kg",
+    pricingMode,
+    price,
+    unitPrice: pricingMode === "fixed" ? price : null,
+    pricePerKg: pricingMode === "variable" ? price : null,
+    unit: product.unit || (pricingMode === "variable" ? "kg" : "un"),
     imageUrl: getPublicStorageUrl(product.image_path),
   };
 }
@@ -118,20 +130,56 @@ export async function registerWeighingItemService(orderNumber, input, device) {
   };
 }
 
-export async function registerStaffWeighingItemService(input, actor) {
-  const result = await registerStaffWeighingItem({
+export async function registerStaffCounterItemService(input, actor) {
+  const product = await findStaffCounterProductById(input.productId);
+  assertStaffCounterProduct(product);
+
+  if (product.pricing_mode === "variable") {
+    if (!Number.isFinite(input.weightKg) || input.weightKg <= 0 || input.weightKg > 100) {
+      throw new AppError("Informe um peso válido em kg.", { statusCode: 400, code: "WEIGHT_REQUIRED" });
+    }
+
+    const result = await registerStaffWeighingItem({
+      p_order_number: input.orderNumber,
+      p_product_id: input.productId,
+      p_weight_kg: input.weightKg,
+      p_operation_key: input.operationId,
+      p_employee_id: actor.id,
+    });
+
+    return {
+      ...result,
+      pricing_mode: "variable",
+      quantity: 1,
+      weight_kg: Number(result.weight_kg),
+      price_per_kg: Number(result.price_per_kg),
+      unit_price: Number(result.item_total),
+      item_total: Number(result.item_total),
+      order_total: Number(result.order_total),
+    };
+  }
+
+  if (!Number.isSafeInteger(input.quantity) || input.quantity <= 0 || input.quantity > 999) {
+    throw new AppError("Informe uma quantidade válida.", { statusCode: 400, code: "QUANTITY_REQUIRED" });
+  }
+
+  const result = await registerStaffFixedCounterItem({
     p_order_number: input.orderNumber,
     p_product_id: input.productId,
-    p_weight_kg: input.weightKg,
+    p_quantity: input.quantity,
     p_operation_key: input.operationId,
     p_employee_id: actor.id,
   });
+
   return {
     ...result,
-    weight_kg: Number(result.weight_kg),
-    price_per_kg: Number(result.price_per_kg),
+    pricing_mode: "fixed",
+    quantity: Number(result.quantity),
+    unit_price: Number(result.unit_price),
     item_total: Number(result.item_total),
     order_total: Number(result.order_total),
+    weight_kg: null,
+    price_per_kg: null,
   };
 }
 
