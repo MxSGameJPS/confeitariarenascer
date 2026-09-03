@@ -27,11 +27,29 @@ export function validateWeighingItem(payload) {
   return { productId: payload.productId, operationId: payload.operationId, weightKg: Number(weightKg.toFixed(3)) };
 }
 
-export function validateStaffWeighingItem(payload) {
-  const item = validateWeighingItem(payload);
+export function validateStaffCounterItem(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) invalid("Dados do item inválidos.");
+  if (typeof payload.productId !== "string" || !UUID_PATTERN.test(payload.productId)) invalid("Produto inválido.");
+  if (typeof payload.operationId !== "string" || !UUID_PATTERN.test(payload.operationId)) invalid("OperationId inválido.");
+
+  const quantity = payload.quantity === undefined || payload.quantity === null || payload.quantity === ""
+    ? 1
+    : Number(payload.quantity);
+  if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 999) invalid("Quantidade inválida.");
+
+  let weightKg = null;
+  if (payload.weightKg !== undefined && payload.weightKg !== null && payload.weightKg !== "") {
+    const parsedWeight = Number(payload.weightKg);
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || parsedWeight > 100) invalid("Peso inválido.");
+    weightKg = Number(parsedWeight.toFixed(3));
+  }
+
   return {
-    ...item,
     orderNumber: validateWeighingCommandNumber(payload.orderNumber),
+    productId: payload.productId,
+    operationId: payload.operationId,
+    quantity,
+    weightKg,
   };
 }
 
