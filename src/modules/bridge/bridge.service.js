@@ -1,6 +1,7 @@
 import { AppError } from "@/src/shared/errors/app-error";
 import { generateBridgeDeviceToken, hashBridgeDeviceToken } from "@/src/modules/bridge/bridge.auth";
 import {
+  confirmBridgeSettlement,
   createBridgeDevice,
   createGemasterMapping,
   findGemasterMapping,
@@ -19,6 +20,7 @@ function normalizeNumbers(payload) {
     total: payload.total == null ? null : Number(payload.total),
     subtotal: payload.subtotal == null ? null : Number(payload.subtotal),
     delivery_fee: payload.delivery_fee == null ? null : Number(payload.delivery_fee),
+    external_total: payload.external_total == null ? null : Number(payload.external_total),
     items: Array.isArray(payload.items)
       ? payload.items.map((item) => ({
           ...item,
@@ -75,6 +77,21 @@ export async function updateBridgeDispatchStatusService(dispatchId, input, devic
     p_status: input.status,
     p_error: input.error,
   });
+}
+
+export async function confirmBridgeSettlementService(dispatchId, input, device) {
+  const result = await confirmBridgeSettlement({
+    p_dispatch_id: dispatchId,
+    p_device_id: device.id,
+    p_operation_key: input.operationId,
+    p_external_sale_id: input.externalSaleId,
+    p_total: input.total,
+    p_payment_method: input.paymentMethod,
+    p_fiscal_document: input.fiscalDocument,
+    p_completed_at: input.completedAt,
+    p_metadata: input.metadata,
+  });
+  return normalizeNumbers(result);
 }
 
 export async function listBridgeDevicesService() {
