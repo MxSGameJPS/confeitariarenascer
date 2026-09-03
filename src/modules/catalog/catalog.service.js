@@ -2,6 +2,7 @@ import { getPublicStorageUrl } from "@/src/config/supabase/server";
 import {
   listActiveCategories,
   listActiveProducts,
+  searchOperationalProducts,
 } from "@/src/modules/catalog/catalog.repository";
 
 function mapProduct(product) {
@@ -19,4 +20,20 @@ export async function getCategoriesService() {
 export async function getProductsService(filters) {
   const products = await listActiveProducts(filters);
   return products.map(mapProduct);
+}
+
+export async function searchOperationalProductsService(input) {
+  const products = await searchOperationalProducts(input.query, input.limit);
+  return products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    price: Number(product.price),
+    pricing_mode: product.pricing_mode,
+    unit: product.unit,
+    image_url: getPublicStorageUrl(product.image_path),
+    gemaster_code: product.external_code || null,
+    reference: product.external_reference || null,
+    ean: product.external_ean || null,
+    matched_by: product.match_type,
+  }));
 }
