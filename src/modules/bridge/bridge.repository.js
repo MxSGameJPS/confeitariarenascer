@@ -14,6 +14,27 @@ const BRIDGE_SAFE_ERRORS = [
   "Codigo nao pertence ao Renascer",
 ];
 
+const SETTLEMENT_SAFE_ERRORS = [
+  "Dados da liquidacao invalidos",
+  "Identificacao da venda GeMaster invalida",
+  "Total da venda GeMaster invalido",
+  "Forma de pagamento GeMaster invalida",
+  "Documento fiscal GeMaster invalido",
+  "Metadados GeMaster invalidos",
+  "Bridge inativo ou inexistente",
+  "Despacho do Bridge nao encontrado",
+  "Liquidacao automatica suportada apenas para comanda",
+  "Venda ainda nao foi confirmada como injetada no GeMaster",
+  "Despacho do Bridge falhou e nao pode ser liquidado",
+  "Comanda do despacho nao encontrada",
+  "Comanda nao esta aberta para liquidacao",
+  "Comanda possui pedidos aguardando atendimento",
+  "Comanda possui itens ainda nao aceitos",
+  "Comanda alterada apos envio ao GeMaster",
+  "Total da venda GeMaster diverge da comanda",
+  "Itens da comanda mudaram apos envio ao GeMaster",
+];
+
 export async function findBridgeDeviceByTokenHash(tokenHash) {
   const params = new URLSearchParams({
     select: "id,name,organization_id,store_id,active,last_seen_at",
@@ -67,6 +88,14 @@ export async function updateBridgeDispatchStatus(payload) {
   return supabaseServerRequest("/rest/v1/rpc/update_gemaster_bridge_dispatch_status", {
     method: "POST",
     body: payload,
+  });
+}
+
+export async function confirmBridgeSettlement(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/confirm_gemaster_bridge_settlement", {
+    method: "POST",
+    body: payload,
+    safeErrorPrefixes: SETTLEMENT_SAFE_ERRORS,
   });
 }
 
