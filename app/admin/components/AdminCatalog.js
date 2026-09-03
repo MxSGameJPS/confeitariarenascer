@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./AdminCatalog.module.css";
 
+const PRODUCT_PAGE_SIZE = 30;
 const emptyCategory = { name: "", description: "", sortOrder: 0, active: true };
 const emptyProduct = {
   categoryId: "",
@@ -27,6 +28,23 @@ const emptyProduct = {
 const brl = (value) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalizeSearch = (value) => String(value || "").toLocaleLowerCase("pt-BR").trim();
 
+function paginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) items.push("start-ellipsis");
+  for (let page = start; page <= end; page += 1) items.push(page);
+  if (end < totalPages - 1) items.push("end-ellipsis");
+
+  items.push(totalPages);
+  return items;
+}
+
 export default function AdminCatalog() {
   const router = useRouter();
   const [catalog, setCatalog] = useState({ categories: [], products: [] });
@@ -44,6 +62,7 @@ export default function AdminCatalog() {
   const [error, setError] = useState("");
   const [catalogView, setCatalogView] = useState("internal");
   const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(1);
 
   const request = useCallback(async (url, options) => {
     const response = await fetch(url, options);
@@ -73,6 +92,10 @@ export default function AdminCatalog() {
     const timer = window.setTimeout(load, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    setProductPage(1);
+  }, [catalogView, productSearch]);
 
   const stats = useMemo(() => ({
     categories: catalog.categories.filter((item) => item.active).length,
@@ -104,7 +127,16 @@ export default function AdminCatalog() {
     });
   }, [catalog.products, catalogView, productSearch]);
 
-  const visibleProducts = filteredProducts.slice(0, 150);
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCT_PAGE_SIZE));
+  const safeProductPage = Math.min(productPage, totalProductPages);
+  const productPageItems = useMemo(
+    () => paginationItems(safeProductPage, totalProductPages),
+    [safeProductPage, totalProductPages],
+  );
+  const productPageStart = (safeProductPage - 1) * PRODUCT_PAGE_SIZE;
+  const visibleProducts = filteredProducts.slice(productPageStart, productPageStart + PRODUCT_PAGE_SIZE);
+  const firstVisibleProduct = filteredProducts.length === 0 ? 0 : productPageStart + 1;
+  const lastVisibleProduct = Math.min(productPageStart + PRODUCT_PAGE_SIZE, filteredProducts.length);
 
   function feedback(text) {
     setMessage(text);
@@ -128,6 +160,7 @@ export default function AdminCatalog() {
       const result = await request("/api/admin/products/import-gemaster", { method: "POST", body: formData });
       setGemasterResult(result);
       setGemasterFile(null);
+      setProductPage(1);
       feedback(`Importação concluída: ${result.processed} produtos processados.`);
       await load();
       setCatalogView(result.price_pending ? "pending" : "internal");
@@ -333,7 +366,46 @@ export default function AdminCatalog() {
             </div>
             <div className={styles.rowActions}><button onClick={() => editProduct(item)}>Editar</button>{item.active && <button onClick={() => archive("products", item.id, item.name)}>Arquivar</button>}</div>
           </article>)}
-          {filteredProducts.length > visibleProducts.length && <p className={styles.resultLimit}>Mostrando os primeiros {visibleProducts.length} de {filteredProducts.length} produtos. Use a busca para localizar o produto desejado.</p>}
+
+          {filteredProducts.length > 0 && <div className={styles.paginationWrap}>
+            <p className={styles.paginationSummary}>Exibindo {firstVisibleProduct}–{lastVisibleProduct} de {filteredProducts.length} produtos</p>
+            {totalProductPages > 1 && <nav className={styles.pagination} aria-label="Paginação dos produtos">
+              <button
+                type="button"
+                className={styles.paginationButton}
+                onClick={() => setProductPage(Math.max(1, safeProductPage - 1))}
+                disabled={safeProductPage === 1}
+              >
+                Anterior
+              </button>
+
+              <div className={styles.paginationPages}>
+                {productPageItems.map((page) => typeof page === "number" ? (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`${styles.paginationPage} ${page === safeProductPage ? styles.paginationPageActive : ""}`}
+                    aria-current={page === safeProductPage ? "page" : undefined}
+                    onClick={() => setProductPage(page)}
+                  >
+                    {page}
+                  </button>
+                ) : (
+                  <span key={page} className={styles.paginationEllipsis} aria-hidden="true">…</span>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className={styles.paginationButton}
+                onClick={() => setProductPage(Math.min(totalProductPages, safeProductPage + 1))}
+                disabled={safeProductPage === totalProductPages}
+              >
+                Próxima
+              </button>
+            </nav>}
+          </div>}
+
           {filteredProducts.length === 0 && <p className={styles.emptyCatalog}>Nenhum produto encontrado neste filtro.</p>}
         </div>}
       </section>
