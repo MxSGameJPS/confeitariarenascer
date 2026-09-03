@@ -67,25 +67,25 @@ async function findGemasterMappings(field, value, limit = 3) {
 
 async function findReferenceMappings(identifier) {
   const normalized = String(identifier || "").trim();
-  const candidates = [normalized];
 
-  if (/^\d+$/.test(normalized)) {
-    const withoutLeadingZeros = normalized.replace(/^0+(?=\d)/, "");
-    if (withoutLeadingZeros && !candidates.includes(withoutLeadingZeros)) candidates.push(withoutLeadingZeros);
-    if (normalized.length < 6) {
-      const padded = normalized.padStart(6, "0");
-      if (!candidates.includes(padded)) candidates.push(padded);
+  // Primeiro respeita exatamente o que veio do GeMaster.
+  // Ex.: referência 77 continua sendo 77.
+  const exact = await findGemasterMappings("external_reference", normalized, 3);
+  if (exact.length) return exact;
+
+  // As referências internas de produtos de produção são gravadas com 6 dígitos.
+  // No balcão, porém, a equipe digita apenas o número conhecido:
+  // 01 -> 000001, 10 -> 000010, 32 -> 000032.
+  // Não tentamos todas as combinações intermediárias porque isso cria falsas ambiguidades.
+  if (/^\d+$/.test(normalized) && normalized.length < 6) {
+    const numericValue = normalized.replace(/^0+(?=\d)/, "") || "0";
+    const padded = numericValue.padStart(6, "0");
+    if (padded !== normalized) {
+      return findGemasterMappings("external_reference", padded, 3);
     }
   }
 
-  const byId = new Map();
-  for (const candidate of candidates) {
-    const rows = await findGemasterMappings("external_reference", candidate, 3);
-    for (const row of rows) byId.set(row.id, row);
-    if (byId.size > 1) break;
-  }
-
-  return [...byId.values()];
+  return [];
 }
 
 export async function findWeighingProductByExternalCode(identifier) {
@@ -98,8 +98,8 @@ export async function findWeighingProductByExternalCode(identifier) {
     return product ? { product, mapping: codeMappings[0], matchedBy: "code" } : null;
   }
 
-  // Depois aceita a referência usada no balcão (ex.: 77 -> PIZZA).
-  // Também aceita 10 quando a referência original vier como 000010.
+  // Depois aceita a referência usada no balcão.
+  // Ex.: 77 -> PIZZA e 01 -> referência 000001 do PÃO FRANCÊS.
   const referenceMappings = await findReferenceMappings(normalized);
   if (referenceMappings.length > 1) {
     return { ambiguous: true, matchedBy: "reference", matches: referenceMappings };
@@ -109,7 +109,7 @@ export async function findWeighingProductByExternalCode(identifier) {
     return product ? { product, mapping: referenceMappings[0], matchedBy: "reference" } : null;
   }
 
-  // Compatibilidade com EAN/referências numéricas já salvas no mapping.
+  // Compatibilidade com EAN digitado exatamente como cadastrado.
   const eanMappings = await findGemasterMappings("external_ean", normalized, 3);
   if (eanMappings.length > 1) {
     return { ambiguous: true, matchedBy: "reference", matches: eanMappings };
