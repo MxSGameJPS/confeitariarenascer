@@ -3,9 +3,11 @@ import { getPublicStorageUrl } from "@/src/config/supabase/server";
 import {
   createWeighingDevice,
   findOpenCommandByNumber,
+  findOpenStaffCommandByPhysicalNumber,
   findWeighingProductByExternalCode,
   listWeighingDevices,
   listWeighingProducts,
+  openStaffCounterCommand,
   registerStaffWeighingItem,
   registerWeighingItem,
   updateWeighingDevice,
@@ -30,6 +32,36 @@ export async function getWeighingCommandService(orderNumber) {
   const command = await findOpenCommandByNumber(orderNumber);
   if (!command) throw new AppError("Comanda não encontrada ou já encerrada.", { statusCode: 404, code: "COMMAND_NOT_FOUND" });
   return { ...command, total: Number(command.total) };
+}
+
+export async function getOrOpenStaffWeighingCommandService(commandNumber, input, actor) {
+  let command = await findOpenStaffCommandByPhysicalNumber(commandNumber);
+  let created = false;
+
+  if (!command) {
+    const opened = await openStaffCounterCommand({
+      commandNumber,
+      operationId: input.operationId,
+      actor,
+    });
+    created = !opened?.duplicate;
+    command = await findOpenStaffCommandByPhysicalNumber(commandNumber);
+  }
+
+  if (!command) {
+    throw new AppError("Não foi possível iniciar a comanda de balcão.", {
+      statusCode: 409,
+      code: "COMMAND_OPEN_FAILED",
+    });
+  }
+
+  return {
+    ...command,
+    command_number: commandNumber,
+    command_code: `C${commandNumber}`,
+    total: Number(command.total),
+    created,
+  };
 }
 
 export async function getStaffWeighingProductService(code) {
