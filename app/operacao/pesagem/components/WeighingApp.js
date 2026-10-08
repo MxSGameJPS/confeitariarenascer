@@ -36,6 +36,7 @@ export default function WeighingApp({ employee }) {
   const [product, setProduct] = useState(null);
   const [productChoices, setProductChoices] = useState([]);
   const [weight, setWeight] = useState("");
+  const [manualAmount, setManualAmount] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [sessionItems, setSessionItems] = useState([]);
   const [busy, setBusy] = useState("");
@@ -64,14 +65,16 @@ export default function WeighingApp({ employee }) {
   }, []);
 
   const weightKg = useMemo(() => parseWeight(weight), [weight]);
+  const enteredAmount = useMemo(() => parseWeight(manualAmount), [manualAmount]);
   const isFixed = product?.pricingMode === "fixed";
   const estimatedTotal = useMemo(() => {
     if (!product) return 0;
+    if (product.pricingMode === "manual") return enteredAmount > 0 ? roundCurrency(enteredAmount) : 0;
     if (product.pricingMode === "fixed") {
       return quantity > 0 ? roundCurrency(product.unitPrice * quantity) : 0;
     }
     return weightKg > 0 ? roundCurrency(product.pricePerKg * weightKg) : 0;
-  }, [product, quantity, weightKg]);
+  }, [product, quantity, weightKg, enteredAmount]);
   const sessionTotal = useMemo(
     () => sessionItems.reduce((total, item) => total + Number(item.item_total || 0), 0),
     [sessionItems],
@@ -107,6 +110,7 @@ export default function WeighingApp({ employee }) {
     setProduct(null);
     setProductChoices([]);
     setWeight("");
+    setManualAmount("");
     setQuantity(1);
     pendingOperationRef.current = null;
   }
@@ -185,6 +189,7 @@ export default function WeighingApp({ employee }) {
       setProduct(choices.length ? null : result);
       setProductCode(code);
       setWeight("");
+      setManualAmount("");
       setQuantity(1);
       pendingOperationRef.current = null;
       setMessage(choices.length
@@ -221,6 +226,11 @@ export default function WeighingApp({ employee }) {
       return;
     }
 
+    if (product.pricingMode === "manual" && (enteredAmount <= 0 || enteredAmount > 10000)) {
+      setError("Informe o valor personalizado do item.");
+      return;
+    }
+
     if (product.pricingMode === "variable" && (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 100)) {
       setError("Informe um peso válido em kg.");
       return;
@@ -236,9 +246,9 @@ export default function WeighingApp({ employee }) {
       return;
     }
 
-    const operationValue = product.pricingMode === "fixed"
-      ? `q${quantity}`
-      : `w${weightKg.toFixed(3)}`;
+    const operationValue = product.pricingMode === "manual"
+      ? `m${enteredAmount.toFixed(2)}`
+      : product.pricingMode === "fixed" ? `q${quantity}` : `w${weightKg.toFixed(3)}`;
     const signature = `${command.order_number}:${product.id}:${operationValue}`;
     let pending = pendingOperationRef.current;
 
@@ -260,6 +270,7 @@ export default function WeighingApp({ employee }) {
           productId: product.id,
           quantity: product.pricingMode === "fixed" ? quantity : 1,
           weightKg: product.pricingMode === "variable" ? weightKg : null,
+          manualAmount: product.pricingMode === "manual" ? enteredAmount : null,
           operationId: pending.operationId,
         }),
       });
@@ -321,7 +332,7 @@ export default function WeighingApp({ employee }) {
 
   const canSubmit = command
     && product
-    && (isFixed ? quantity > 0 : weightKg > 0 && weightKg <= 100)
+    && (product.pricingMode === "manual" ? enteredAmount > 0 && enteredAmount <= 10000 : isFixed ? quantity > 0 : weightKg > 0 && weightKg <= 100)
     && !busy
     && online;
 
@@ -429,6 +440,7 @@ export default function WeighingApp({ employee }) {
                   setProduct(null);
                   setProductChoices([]);
                   setWeight("");
+                  setManualAmount("");
                   setQuantity(1);
                   pendingOperationRef.current = null;
                   clearFeedback();
@@ -448,6 +460,7 @@ export default function WeighingApp({ employee }) {
                     onClick={() => {
                       setProduct(option);
                       setWeight("");
+                      setManualAmount("");
                       setQuantity(1);
                       pendingOperationRef.current = null;
                       setProductChoices([]);
@@ -460,7 +473,7 @@ export default function WeighingApp({ employee }) {
                     className={styles.productChoice}>
                     <strong>{option.name}</strong>
                     <span className={styles.productChoiceDetail}>
-                      {option.pricingMode === "fixed" ? `${brl(option.unitPrice)} / un` : `${brl(option.pricePerKg)} / kg`}
+                      {option.pricingMode === "manual" ? "Valor informado no atendimento" : option.pricingMode === "fixed" ? `${brl(option.unitPrice)} / un` : `${brl(option.pricePerKg)} / kg`}
                       {" · "}Gemaster {option.code}
                     </span>
                   </button>
@@ -476,11 +489,11 @@ export default function WeighingApp({ employee }) {
                   <small>CÓDIGO {product.code}</small>
                   <strong>{product.name}</strong>
                   <span>
-                    {product.pricingMode === "fixed"
+                    {product.pricingMode === "manual" ? "Valor informado no atendimento" : product.pricingMode === "fixed"
                       ? `${brl(product.unitPrice)} / ${product.unit || "un"}`
                       : `${brl(product.pricePerKg)} / kg`}
                   </span>
-                  <em>{product.pricingMode === "fixed" ? "Preço fixo · não precisa pesar" : "Vendido por peso"}</em>
+                  <em>{product.pricingMode === "manual" ? "Preço personalizado · confirme o valor" : product.pricingMode === "fixed" ? "Preço fixo · não precisa pesar" : "Vendido por peso"}</em>
                   {product.reference && <em>Ref. {product.reference}</em>}
                 </div>
               </div>
@@ -491,9 +504,9 @@ export default function WeighingApp({ employee }) {
             <div className={styles.cardTitle}>
               <span>3</span>
               <div>
-                <strong>{isFixed ? "Quantidade e valor" : "Peso e valor"}</strong>
+                <strong>{product?.pricingMode === "manual" ? "Valor personalizado" : isFixed ? "Quantidade e valor" : "Peso e valor"}</strong>
                 <small>
-                  {isFixed
+                  {product?.pricingMode === "manual" ? "Digite o valor cobrado neste atendimento." : isFixed
                     ? "Produto com preço fixo. Informe quantas unidades serão adicionadas."
                     : "Produto vendido por quilo. Digite o peso mostrado na balança."}
                 </small>
@@ -501,7 +514,18 @@ export default function WeighingApp({ employee }) {
             </div>
 
             <div className={styles.weightGrid}>
-              {isFixed ? (
+              {product?.pricingMode === "manual" ? (
+                <label>
+                  Valor (R$)
+                  <div className={styles.weightInputWrap}>
+                    <input inputMode="decimal" disabled={!product || busy === "submit"}
+                      value={manualAmount}
+                      onChange={(event) => { setManualAmount(event.target.value.replace(/[^0-9.,]/g, "").slice(0, 9)); pendingOperationRef.current = null; clearFeedback(); }}
+                      placeholder="12,50" aria-label="Valor personalizado em reais" />
+                    <span>R$</span>
+                  </div>
+                </label>
+              ) : isFixed ? (
                 <label>
                   Quantidade
                   <div className={styles.quantityControl}>
