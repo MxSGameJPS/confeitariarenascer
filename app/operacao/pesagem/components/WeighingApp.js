@@ -632,7 +632,9 @@ export default function WeighingApp({ employee }) {
                 <div>
                   <strong>{item.product_name}</strong>
                   <span>
-                    {item.pricing_mode === "fixed"
+                    {item.pricing_mode === "manual"
+                      ? `Valor informado: ${brl(item.unit_price)}`
+                      : item.pricing_mode === "fixed"
                       ? `${item.quantity} ${item.quantity === 1 ? "unidade" : "unidades"}${item.unit_price != null ? ` × ${brl(item.unit_price)}` : ""}`
                       : `${Number(item.weight_kg).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`}
                   </span>
