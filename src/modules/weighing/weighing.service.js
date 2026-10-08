@@ -141,6 +141,7 @@ export async function registerStaffCounterItemService(input, actor) {
       p_manual_amount: input.manualAmount,
       p_operation_key: input.operationId,
       p_employee_id: actor.id,
+      p_variant_id: input.variantId || null,
     });
     return {
       ...result,
