@@ -37,6 +37,8 @@ export default function WeighingApp({ employee }) {
   const [productChoices, setProductChoices] = useState([]);
   const [weight, setWeight] = useState("");
   const [manualAmount, setManualAmount] = useState("");
+  const [variants, setVariants] = useState([]);
+  const [variantId, setVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [sessionItems, setSessionItems] = useState([]);
   const [busy, setBusy] = useState("");
@@ -63,6 +65,21 @@ export default function WeighingApp({ employee }) {
       window.removeEventListener("offline", goOffline);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVariants([]);
+    setVariantId("");
+    if (product?.pricingMode !== "manual") return undefined;
+    fetch(`/api/operacao/pesagem/subprodutos?productId=${encodeURIComponent(product.id)}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Falha ao consultar subprodutos.");
+        return response.json();
+      })
+      .then((body) => { if (!cancelled) setVariants(body.data || []); })
+      .catch(() => { if (!cancelled) setVariants([]); });
+    return () => { cancelled = true; };
+  }, [product?.id, product?.pricingMode]);
 
   const weightKg = useMemo(() => parseWeight(weight), [weight]);
   const enteredAmount = useMemo(() => parseWeight(manualAmount), [manualAmount]);
@@ -111,6 +128,8 @@ export default function WeighingApp({ employee }) {
     setProductChoices([]);
     setWeight("");
     setManualAmount("");
+    setVariantId("");
+    setVariants([]);
     setQuantity(1);
     pendingOperationRef.current = null;
   }
@@ -249,7 +268,7 @@ export default function WeighingApp({ employee }) {
     const operationValue = product.pricingMode === "manual"
       ? `m${enteredAmount.toFixed(2)}`
       : product.pricingMode === "fixed" ? `q${quantity}` : `w${weightKg.toFixed(3)}`;
-    const signature = `${command.order_number}:${product.id}:${operationValue}`;
+    const signature = `${command.order_number}:${product.id}:${operationValue}:v${variantId}`;
     let pending = pendingOperationRef.current;
 
     if (!pending || pending.signature !== signature) {
@@ -271,6 +290,7 @@ export default function WeighingApp({ employee }) {
           quantity: product.pricingMode === "fixed" ? quantity : 1,
           weightKg: product.pricingMode === "variable" ? weightKg : null,
           manualAmount: product.pricingMode === "manual" ? enteredAmount : null,
+          variantId: product.pricingMode === "manual" ? variantId || null : null,
           operationId: pending.operationId,
         }),
       });
@@ -514,6 +534,19 @@ export default function WeighingApp({ employee }) {
             </div>
 
             <div className={styles.weightGrid}>
+              {product?.pricingMode === "manual" && (
+                <label className={styles.variantPicker}>
+                  Qual produto foi vendido? (opcional)
+                  <select value={variantId} onChange={(event) => {
+                    setVariantId(event.target.value);
+                    pendingOperationRef.current = null;
+                  }}>
+                    <option value="">Não especificar — continuar venda normalmente</option>
+                    {variants.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+                  </select>
+                  {variants.length === 0 && <small>Nenhum subproduto cadastrado. Informe o valor e continue.</small>}
+                </label>
+              )}
               {product?.pricingMode === "manual" ? (
                 <label>
                   Valor (R$)
