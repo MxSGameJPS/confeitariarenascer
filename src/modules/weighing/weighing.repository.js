@@ -241,7 +241,7 @@ export async function findStaffCounterSaleType(productId) {
 }
 
 export async function registerStaffManualCounterItem(payload) {
-  return supabaseServerRequest("/rest/v1/rpc/register_staff_manual_counter_item_transaction", {
+  return supabaseServerRequest("/rest/v1/rpc/register_staff_manual_counter_item_with_variant", {
     method: "POST",
     body: payload,
     safeErrorPrefixes: ["Numero da comanda","Comanda","Produto","Valor personalizado","OperationId","Funcionario"],
