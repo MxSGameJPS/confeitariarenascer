@@ -5,11 +5,13 @@ import {
   findOpenCommandByNumber,
   findOpenStaffCommandByPhysicalNumber,
   findStaffCounterProductById,
+  findStaffCounterSaleType,
   findWeighingProductByExternalCode,
   listWeighingDevices,
   listWeighingProducts,
   openStaffCounterCommand,
   registerStaffFixedCounterItem,
+  registerStaffManualCounterItem,
   registerStaffWeighingItem,
   registerWeighingItem,
   updateWeighingDevice,
@@ -84,10 +86,10 @@ export async function getStaffWeighingProductService(identifier) {
     throw new AppError("Produto não encontrado pelo código ou referência informada.", { statusCode: 404, code: "WEIGHING_PRODUCT_NOT_FOUND" });
   }
 
-  const choices = results.map(({ product, mapping, matchedBy }) => {
-    assertStaffCounterProduct(product);
+  const choices = results.map(({ product, mapping, matchedBy, saleType }) => {
+    if (saleType !== "custom") assertStaffCounterProduct(product);
     const price = Number(product.price);
-    const pricingMode = product.pricing_mode;
+    const pricingMode = saleType === "custom" ? "manual" : product.pricing_mode;
     return {
       id: product.id,
       name: product.name,
@@ -125,6 +127,32 @@ export async function registerWeighingItemService(orderNumber, input, device) {
 
 export async function registerStaffCounterItemService(input, actor) {
   const product = await findStaffCounterProductById(input.productId);
+  const saleType = await findStaffCounterSaleType(input.productId);
+  if (saleType === "custom") {
+    if (!product?.active || !product.available_internal) {
+      throw new AppError("Produto personalizado indisponível.", { statusCode: 409, code: "CUSTOM_PRODUCT_UNAVAILABLE" });
+    }
+    if (!Number.isFinite(input.manualAmount) || input.manualAmount <= 0 || input.manualAmount > 10000) {
+      throw new AppError("Informe um valor personalizado válido.", { statusCode: 400, code: "CUSTOM_PRICE_REQUIRED" });
+    }
+    const result = await registerStaffManualCounterItem({
+      p_order_number: input.orderNumber,
+      p_product_id: input.productId,
+      p_manual_amount: input.manualAmount,
+      p_operation_key: input.operationId,
+      p_employee_id: actor.id,
+    });
+    return {
+      ...result,
+      pricing_mode: "manual",
+      quantity: 1,
+      unit_price: Number(result.unit_price),
+      item_total: Number(result.item_total),
+      order_total: Number(result.order_total),
+      weight_kg: null,
+      price_per_kg: null,
+    };
+  }
   assertStaffCounterProduct(product);
 
   if (product.pricing_mode === "variable") {
