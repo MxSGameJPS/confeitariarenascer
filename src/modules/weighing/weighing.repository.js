@@ -71,8 +71,8 @@ async function findGemasterMappings(field, value, limit = 3) {
 
 async function findReferenceMappings(identifier) {
   const normalized = String(identifier || "").trim();
-  const numeric = /^\\d+$/.test(normalized)
-    ? (normalized.replace(/^0+(?=\\d)/, "") || "0")
+  const numeric = /^\d+$/.test(normalized)
+    ? (normalized.replace(/^0+(?=\d)/, "") || "0")
     : null;
   const candidates = [...new Set([
     normalized,
