@@ -103,11 +103,12 @@ export async function findWeighingProductByExternalCode(identifier) {
   const operationalCodes = await supabaseServerRequest(`/rest/v1/operational_product_codes?${operationalParams}`);
   for (const entry of operationalCodes) {
     const product = await findProductForCounterById(entry.product_id);
-    if (product?.active && product.available_internal && product.price_configured && Number(product.price) > 0) {
-        const gemasterMapping = (await findGemasterMappings("product_id", product.id, 1))[0];
+    if (product?.active && product.available_internal && (entry.sale_type === "custom" || (product.price_configured && Number(product.price) > 0))) {
+      const gemasterMapping = (await findGemasterMappings("product_id", product.id, 1))[0];
       found.set(product.id, {
         product,
         matchedBy: "operational_code",
+        saleType: entry.sale_type,
         mapping: gemasterMapping || {
           external_code: null,
           external_reference: entry.code,
@@ -225,5 +226,24 @@ export async function writeWeighingAdminAudit(actorId, action, entityId, metadat
   await supabaseServerRequest("/rest/v1/audit_logs", {
     method: "POST",
     body: { actor_id: actorId, actor_kind: "admin", action, entity_type: "weighing_device", entity_id: entityId, metadata },
+  });
+}
+
+export async function findStaffCounterSaleType(productId) {
+  const params = new URLSearchParams({
+    select: "sale_type",
+    product_id: `eq.${productId}`,
+    sale_type: "eq.custom",
+    limit: "1",
+  });
+  const rows = await supabaseServerRequest(`/rest/v1/operational_product_codes?${params}`);
+  return rows[0]?.sale_type || null;
+}
+
+export async function registerStaffManualCounterItem(payload) {
+  return supabaseServerRequest("/rest/v1/rpc/register_staff_manual_counter_item_transaction", {
+    method: "POST",
+    body: payload,
+    safeErrorPrefixes: ["Numero da comanda","Comanda","Produto","Valor personalizado","OperationId","Funcionario"],
   });
 }
