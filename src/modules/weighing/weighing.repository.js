@@ -104,10 +104,11 @@ export async function findWeighingProductByExternalCode(identifier) {
   for (const entry of operationalCodes) {
     const product = await findProductForCounterById(entry.product_id);
     if (product?.active && product.available_internal && product.price_configured && Number(product.price) > 0) {
-        found.set(product.id, {
+        const gemasterMapping = (await findGemasterMappings("product_id", product.id, 1))[0];
+      found.set(product.id, {
         product,
         matchedBy: "operational_code",
-        mapping: {
+        mapping: gemasterMapping || {
           external_code: null,
           external_reference: entry.code,
           external_ean: null,
