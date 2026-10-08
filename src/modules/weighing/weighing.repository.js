@@ -94,6 +94,27 @@ export async function findWeighingProductByExternalCode(identifier) {
       found.set(mapping.product_id, { product, mapping, matchedBy });
     }
   }
+  // Prioriza os códigos operacionais confirmados pelo proprietário.
+  const operationalParams = new URLSearchParams({
+    select: "product_id,code,sale_type",
+    code: `eq.${normalized}`,
+    limit: "50",
+  });
+  const operationalCodes = await supabaseServerRequest(`/rest/v1/operational_product_codes?${operationalParams}`);
+  for (const entry of operationalCodes) {
+    const product = await findProductForCounterById(entry.product_id);
+    if (product?.active && product.available_internal && product.price_configured && Number(product.price) > 0) {
+        found.set(product.id, {
+        product,
+        matchedBy: "operational_code",
+        mapping: {
+          external_code: null,
+          external_reference: entry.code,
+          external_ean: null,
+        },
+      });
+    }
+  }
   // Código Gemaster exato e referências de balcão são namespaces diferentes.
   for (const mapping of await findGemasterMappings("external_code", normalized, 50)) {
     await add(mapping, "code");
