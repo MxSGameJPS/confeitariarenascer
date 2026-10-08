@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./AdminCatalog.module.css";
+import CustomVariantsManager from "./CustomVariantsManager";
 
 const PRODUCT_PAGE_SIZE = 30;
 const emptyCategory = { name: "", description: "", sortOrder: 0, active: true };
@@ -52,6 +53,7 @@ export default function AdminCatalog() {
   const [productForm, setProductForm] = useState(emptyProduct);
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [variantsProduct, setVariantsProduct] = useState(null);
   const [file, setFile] = useState(null);
   const [gemasterFile, setGemasterFile] = useState(null);
   const [gemasterResult, setGemasterResult] = useState(null);
@@ -344,6 +346,7 @@ export default function AdminCatalog() {
           </div>
         </form>
 
+        {variantsProduct && <CustomVariantsManager key={variantsProduct.id} product={variantsProduct} onClose={() => setVariantsProduct(null)} />}
         <div className={styles.catalogToolbar}>
           <div className={styles.catalogTabs} role="tablist" aria-label="Escolher cardápio">
             <button type="button" role="tab" aria-selected={catalogView === "internal"} onClick={() => setCatalogView("internal")}>Venda interna <span>{stats.internal}</span></button>
@@ -364,7 +367,7 @@ export default function AdminCatalog() {
               <div className={styles.channelBadges}>{!item.price_configured && <em className={styles.pendingBadge}>Preço pendente</em>}{item.available_delivery && <em>Delivery</em>}{item.available_internal && <em>Interno</em>}</div>
               {item.stock_control && <em>Estoque: {item.stock_quantity}</em>}
             </div>
-            <div className={styles.rowActions}><button onClick={() => editProduct(item)}>Editar</button>{item.active && <button onClick={() => archive("products", item.id, item.name)}>Arquivar</button>}</div>
+            <div className={styles.rowActions}><button onClick={() => editProduct(item)}>Editar</button>{item.slug?.startsWith("catalogo-20261008-custom-") && <button type="button" onClick={() => { setVariantsProduct(item); document.getElementById("product-form")?.scrollIntoView({ behavior: "smooth" }); }}>Subprodutos</button>}{item.active && <button onClick={() => archive("products", item.id, item.name)}>Arquivar</button>}</div>
           </article>)}
 
           {filteredProducts.length > 0 && <div className={styles.paginationWrap}>
