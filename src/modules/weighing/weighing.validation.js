@@ -44,7 +44,11 @@ export function validateStaffCounterItem(payload) {
     weightKg = Number(parsedWeight.toFixed(3));
   }
 
+  const manualValue = payload.manualAmount == null || payload.manualAmount === "" ? null : Number(payload.manualAmount);
+  if (manualValue !== null && (!Number.isFinite(manualValue) || manualValue <= 0 || manualValue > 10000 || Math.round(manualValue * 100) !== manualValue * 100)) invalid("Valor personalizado inválido.");
+
   return {
+    manualAmount: manualValue,
     orderNumber: validateWeighingCommandNumber(payload.orderNumber),
     productId: payload.productId,
     operationId: payload.operationId,
