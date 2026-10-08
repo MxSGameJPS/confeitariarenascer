@@ -442,7 +442,7 @@ export default function WeighingApp({ employee }) {
             </form>
 
             {productChoices.length > 0 && !product && (
-              <div role="group" aria-label="Escolha o produto" style={{ display: "grid", gap: "0.5rem", marginTop: "1rem" }}>
+              <div role="group" aria-label="Escolha o produto" className={styles.productChoices}>
                 {productChoices.map((option) => (
                   <button key={option.id} type="button" disabled={Boolean(busy)}
                     onClick={() => {
@@ -457,9 +457,9 @@ export default function WeighingApp({ employee }) {
                         else weightInputRef.current?.focus();
                       }, 0);
                     }}
-                    style={{ textAlign: "left", padding: "1rem", border: "1px solid #d9c7b6", borderRadius: "12px", background: "#fff", color: "#38251b", cursor: "pointer" }}>
+                    className={styles.productChoice}>
                     <strong>{option.name}</strong>
-                    <span style={{ display: "block", marginTop: "0.25rem" }}>
+                    <span className={styles.productChoiceDetail}>
                       {option.pricingMode === "fixed" ? `${brl(option.unitPrice)} / un` : `${brl(option.pricePerKg)} / kg`}
                       {" · "}Gemaster {option.code}
                     </span>
