@@ -91,7 +91,7 @@ export async function getStaffWeighingProductService(identifier) {
     return {
       id: product.id,
       name: product.name,
-      code: mapping.external_code || product.weighing_code,
+      code: mapping.external_code || product.weighing_code || mapping.external_reference,
       reference: mapping.external_reference || mapping.external_ean || null,
       matchedBy,
       pricingMode,
