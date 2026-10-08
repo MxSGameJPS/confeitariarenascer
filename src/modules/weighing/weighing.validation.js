@@ -49,6 +49,7 @@ export function validateStaffCounterItem(payload) {
 
   return {
     manualAmount: manualValue,
+    variantId: payload.variantId == null || payload.variantId === "" ? null : (UUID_PATTERN.test(String(payload.variantId)) ? payload.variantId : invalid("Subproduto inválido.")),
     orderNumber: validateWeighingCommandNumber(payload.orderNumber),
     productId: payload.productId,
     operationId: payload.operationId,
