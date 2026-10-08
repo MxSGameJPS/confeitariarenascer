@@ -71,64 +71,55 @@ async function findGemasterMappings(field, value, limit = 3) {
 
 async function findReferenceMappings(identifier) {
   const normalized = String(identifier || "").trim();
-
-  const exact = await findGemasterMappings("external_reference", normalized, 3);
-  if (exact.length) return exact;
-
-  if (/^\d+$/.test(normalized) && normalized.length < 6) {
-    const numericValue = normalized.replace(/^0+(?=\d)/, "") || "0";
-    const padded = numericValue.padStart(6, "0");
-    if (padded !== normalized) {
-      return findGemasterMappings("external_reference", padded, 3);
-    }
-  }
-
-  return [];
+  const numeric = /^\\d+$/.test(normalized)
+    ? (normalized.replace(/^0+(?=\\d)/, "") || "0")
+    : null;
+  const candidates = [...new Set([
+    normalized,
+    ...(numeric !== null ? [numeric, numeric.padStart(6, "0")] : []),
+  ])];
+  const mappings = (await Promise.all(
+    candidates.map((value) => findGemasterMappings("external_reference", value, 50)),
+  )).flat();
+  return [...new Map(mappings.map((mapping) => [mapping.product_id, mapping])).values()];
 }
 
 export async function findWeighingProductByExternalCode(identifier) {
   const normalized = String(identifier || "").trim();
-
-  const codeMappings = await findGemasterMappings("external_code", normalized, 1);
-  if (codeMappings[0]) {
-    const product = await findProductForCounterById(codeMappings[0].product_id);
-    return product ? { product, mapping: codeMappings[0], matchedBy: "code" } : null;
+  const found = new Map();
+  async function add(mapping, matchedBy) {
+    if (!mapping || found.has(mapping.product_id)) return;
+    const product = await findProductForCounterById(mapping.product_id);
+    if (product?.active && product.available_internal && product.price_configured && Number(product.price) > 0) {
+      found.set(mapping.product_id, { product, mapping, matchedBy });
+    }
   }
-
-  const referenceMappings = await findReferenceMappings(normalized);
-  if (referenceMappings.length > 1) {
-    return { ambiguous: true, matchedBy: "reference", matches: referenceMappings };
+  // Código Gemaster exato e referências de balcão são namespaces diferentes.
+  for (const mapping of await findGemasterMappings("external_code", normalized, 50)) {
+    await add(mapping, "code");
   }
-  if (referenceMappings[0]) {
-    const product = await findProductForCounterById(referenceMappings[0].product_id);
-    return product ? { product, mapping: referenceMappings[0], matchedBy: "reference" } : null;
+  for (const mapping of await findReferenceMappings(normalized)) {
+    await add(mapping, "reference");
   }
-
-  const eanMappings = await findGemasterMappings("external_ean", normalized, 3);
-  if (eanMappings.length > 1) {
-    return { ambiguous: true, matchedBy: "reference", matches: eanMappings };
+  for (const mapping of await findGemasterMappings("external_ean", normalized, 50)) {
+    await add(mapping, "reference");
   }
-  if (eanMappings[0]) {
-    const product = await findProductForCounterById(eanMappings[0].product_id);
-    return product ? { product, mapping: eanMappings[0], matchedBy: "reference" } : null;
-  }
-
   const fallbackParams = new URLSearchParams({
     select: "id,name,price,price_configured,unit,weighing_code,pricing_mode,active,available_internal,image_path,stock_control,stock_quantity",
     weighing_code: `eq.${normalized.toUpperCase()}`,
-    limit: "1",
+    limit: "50",
   });
-  const products = await supabaseServerRequest(`/rest/v1/products?${fallbackParams}`);
-  const product = products[0] ?? null;
-  return product ? {
-    product,
-    matchedBy: "weighing_code",
-    mapping: {
-      external_code: product.weighing_code,
-      external_reference: null,
-      external_ean: null,
-    },
-  } : null;
+  const fallback = await supabaseServerRequest(`/rest/v1/products?${fallbackParams}`);
+  for (const product of fallback) {
+    if (!found.has(product.id) && product.active && product.available_internal && product.price_configured && Number(product.price) > 0) {
+      found.set(product.id, {
+        product,
+        matchedBy: "weighing_code",
+        mapping: { external_code: product.weighing_code, external_reference: null, external_ean: null },
+      });
+    }
+  }
+  return [...found.values()];
 }
 
 export async function findOpenCommandByNumber(orderNumber) {
