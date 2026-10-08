@@ -34,6 +34,7 @@ export default function WeighingApp({ employee }) {
   const [command, setCommand] = useState(null);
   const [productCode, setProductCode] = useState("");
   const [product, setProduct] = useState(null);
+  const [productChoices, setProductChoices] = useState([]);
   const [weight, setWeight] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [sessionItems, setSessionItems] = useState([]);
@@ -104,6 +105,7 @@ export default function WeighingApp({ employee }) {
   function resetProductStep() {
     setProductCode("");
     setProduct(null);
+    setProductChoices([]);
     setWeight("");
     setQuantity(1);
     pendingOperationRef.current = null;
@@ -178,22 +180,25 @@ export default function WeighingApp({ employee }) {
     try {
       setBusy("product");
       const result = await request(`/api/operacao/pesagem/produtos?code=${encodeURIComponent(code)}`);
-      setProduct(result);
+      const choices = result.choices || [];
+      setProductChoices(choices);
+      setProduct(choices.length ? null : result);
       setProductCode(code);
       setWeight("");
       setQuantity(1);
       pendingOperationRef.current = null;
-      setMessage(
-        result.matchedBy === "reference"
+      setMessage(choices.length
+        ? `Foram encontrados ${choices.length} produtos para ${code}. Selecione a modalidade correta.`
+        : result.matchedBy === "reference"
           ? `${result.name} localizado pela referência ${code}.`
-          : `${result.name} localizado.`,
-      );
-      window.setTimeout(() => {
+          : `${result.name} localizado.`);
+      if (!choices.length) window.setTimeout(() => {
         if (result.pricingMode === "fixed") quantityInputRef.current?.focus();
         else weightInputRef.current?.focus();
       }, 0);
     } catch (err) {
       setProduct(null);
+      setProductChoices([]);
       setError(err.message);
     } finally {
       setBusy("");
@@ -422,6 +427,7 @@ export default function WeighingApp({ employee }) {
                 onChange={(event) => {
                   setProductCode(event.target.value.trimStart().slice(0, 64));
                   setProduct(null);
+                  setProductChoices([]);
                   setWeight("");
                   setQuantity(1);
                   pendingOperationRef.current = null;
@@ -435,6 +441,32 @@ export default function WeighingApp({ employee }) {
               </button>
             </form>
 
+            {productChoices.length > 0 && !product && (
+              <div role="group" aria-label="Escolha o produto" className={styles.productChoices}>
+                {productChoices.map((option) => (
+                  <button key={option.id} type="button" disabled={Boolean(busy)}
+                    onClick={() => {
+                      setProduct(option);
+                      setWeight("");
+                      setQuantity(1);
+                      pendingOperationRef.current = null;
+                      setProductChoices([]);
+                      setMessage(`${option.name} selecionado.`);
+                      window.setTimeout(() => {
+                        if (option.pricingMode === "fixed") quantityInputRef.current?.focus();
+                        else weightInputRef.current?.focus();
+                      }, 0);
+                    }}
+                    className={styles.productChoice}>
+                    <strong>{option.name}</strong>
+                    <span className={styles.productChoiceDetail}>
+                      {option.pricingMode === "fixed" ? `${brl(option.unitPrice)} / un` : `${brl(option.pricePerKg)} / kg`}
+                      {" · "}Gemaster {option.code}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             {product && (
               <div className={styles.productCard}>
                 <div className={styles.productImage}>

@@ -79,38 +79,31 @@ function assertStaffCounterProduct(product) {
 }
 
 export async function getStaffWeighingProductService(identifier) {
-  const result = await findWeighingProductByExternalCode(identifier);
-
-  if (result?.ambiguous) {
-    throw new AppError(
-      `A referência ${identifier} está vinculada a mais de um produto. Revise o cadastro da referência no GeMaster.`,
-      { statusCode: 409, code: "WEIGHING_PRODUCT_REFERENCE_AMBIGUOUS" },
-    );
-  }
-
-  if (!result?.product) {
+  const results = await findWeighingProductByExternalCode(identifier);
+  if (!results.length) {
     throw new AppError("Produto não encontrado pelo código ou referência informada.", { statusCode: 404, code: "WEIGHING_PRODUCT_NOT_FOUND" });
   }
 
-  const { product, mapping, matchedBy } = result;
-  assertStaffCounterProduct(product);
-
-  const price = Number(product.price);
-  const pricingMode = product.pricing_mode;
-
-  return {
-    id: product.id,
-    name: product.name,
-    code: mapping.external_code || product.weighing_code,
-    reference: mapping.external_reference || mapping.external_ean || null,
-    matchedBy,
-    pricingMode,
-    price,
-    unitPrice: pricingMode === "fixed" ? price : null,
-    pricePerKg: pricingMode === "variable" ? price : null,
-    unit: product.unit || (pricingMode === "variable" ? "kg" : "un"),
-    imageUrl: getPublicStorageUrl(product.image_path),
-  };
+  const choices = results.map(({ product, mapping, matchedBy }) => {
+    assertStaffCounterProduct(product);
+    const price = Number(product.price);
+    const pricingMode = product.pricing_mode;
+    return {
+      id: product.id,
+      name: product.name,
+      code: mapping.external_code || product.weighing_code,
+      reference: mapping.external_reference || mapping.external_ean || null,
+      matchedBy,
+      pricingMode,
+      price,
+      unitPrice: pricingMode === "fixed" ? price : null,
+      pricePerKg: pricingMode === "variable" ? price : null,
+      unit: product.unit || (pricingMode === "variable" ? "kg" : "un"),
+      imageUrl: getPublicStorageUrl(product.image_path),
+    };
+  });
+  // Mantém resposta original quando só há um resultado.
+  return choices.length === 1 ? choices[0] : { choices };
 }
 
 export async function registerWeighingItemService(orderNumber, input, device) {
