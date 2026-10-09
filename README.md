@@ -8,7 +8,7 @@ O projeto integra atendimento, delivery, comandas, mesas, caixa, produtos, estoq
 
 ## Objetivo
 
-Transformar o Renascer em um ecossistema completo para operação de padarias:
+Transformar o Renascer em um ecossistema completo para operação de padarias
 
 - Site e cardápio digital
 - Delivery
