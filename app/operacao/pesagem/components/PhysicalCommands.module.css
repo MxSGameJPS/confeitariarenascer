@@ -1,1 +1,23 @@
 .root{max-width:1400px;margin:22px auto;color:#342318}.heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}.heading small{font-weight:800;color:#9a6c30;letter-spacing:.08em}.heading h2{font-size:1.65rem;margin:4px 0}.heading p,.form p,.note{color:#806d60;font-size:.85rem}.heading button,.form button,.item button{border:0;border-radius:12px;padding:12px 16px;min-height:44px;background:#3a271a;color:#fff;font-weight:750;cursor:pointer}.heading button:disabled,.form button:disabled,.item button:disabled{opacity:.5}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tabs button{border:1px solid #e0d2c1;border-radius:12px;padding:12px 15px;background:#fff;color:#5c4434;font-weight:700;cursor:pointer}.tabs button.active{background:#3a271a;color:#fff}.search{width:100%;padding:14px;border:1px solid #dfd0bf;border-radius:12px;margin-bottom:16px;background:white;color:#342318}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.item,.form{border:1px solid #e7dbcf;background:#fff;border-radius:18px;padding:18px}.item{display:flex;flex-direction:column;justify-content:space-between;gap:16px}.item>div{display:grid;gap:5px}.item strong{font-size:1.5rem}.item span,.item small{color:#806d60;font-size:.85rem}.form{margin-bottom:18px}.form h3{margin:0 0 6px}.form>div{display:flex;align-items:end;flex-wrap:wrap;gap:12px}.form label{display:grid;gap:7px;font-size:.8rem;font-weight:700}.form input{min-height:44px;border:1px solid #dfd0bf;border-radius:10px;padding:8px 12px;min-width:170px}.error,.success{padding:14px;border-radius:12px;margin:14px 0}.error{background:#fff0ef;color:#8b2929}.success{background:#e7f6ea;color:#27713d}.empty{padding:24px;text-align:center;color:#806d60;background:#fff;border-radius:14px}.note{margin-top:20px;line-height:1.5}@media(max-width:600px){.heading{align-items:start;flex-direction:column}.form>div,.form label,.form input{width:100%}.form button{width:100%}}
+.modalBackdrop{position:fixed;inset:0;z-index:1000;background:rgba(26,17,11,.72);display:grid;place-items:center;padding:16px;overflow-y:auto}
+.modal{width:min(100%,480px);background:#fffaf4;color:#342318;border-radius:24px;box-shadow:0 25px 75px rgba(0,0,0,.32);padding:26px;display:grid;gap:20px}
+.modalHeading{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.modalHeading span{font-size:.72rem;letter-spacing:.1em;color:#977343;font-weight:850}
+.modalHeading h3{font-size:1.65rem;margin:5px 0 0}
+.modalDismiss{border:0;background:#f0e5d8;color:#342318;border-radius:50%;height:40px;width:40px;cursor:pointer;font-size:1.7rem;line-height:1}
+.modalDescription{margin:0;color:#776356;line-height:1.5;font-size:.93rem}
+.modalAmount{background:#3a271a;color:white;border-radius:18px;display:grid;gap:8px;padding:20px 22px}
+.modalAmount small{color:#e5c9a6;letter-spacing:.08em;font-size:.7rem;font-weight:800}
+.modalAmount strong{font-size:2rem;letter-spacing:-.02em}
+.paymentMethods{border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.paymentMethods legend{font-weight:850;font-size:.84rem;padding:0;margin-bottom:12px}
+.paymentMethods label{display:flex;align-items:center;gap:9px;padding:13px;border:2px solid #e6d8ca;border-radius:12px;cursor:pointer;font-weight:750;background:white}
+.paymentMethods label.paymentSelected{border-color:#ad772d;background:#fdf2df}
+.paymentMethods input{accent-color:#94601e}
+.modalActions{display:grid;grid-template-columns:1fr 1.7fr;gap:10px}
+.modalActions button{min-height:52px;border-radius:12px;border:0;padding:10px 12px;cursor:pointer;font-weight:850}
+.modalActions button:disabled{opacity:.55;cursor:not-allowed}
+.cancelAction{background:#f0e5d8;color:#4a3524}
+.confirmAction{background:#34754b;color:white}
+.modalError{margin:0;padding:11px 12px;background:#ffeded;color:#842626;border-radius:10px;font-size:.84rem}
+@media(max-width:480px){.modal{padding:20px;border-radius:18px}.modalActions{grid-template-columns:1fr}.modalAmount strong{font-size:1.7rem}}
