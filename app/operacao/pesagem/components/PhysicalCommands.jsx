@@ -27,6 +27,8 @@ export default function PhysicalCommands({ admin = false }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [closingSale, setClosingSale] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("dinheiro");
   const headers = useMemo(() => ({ "x-renascer-surface": admin ? "admin" : "staff" }), [admin]);
 
   const load = useCallback(async () => {
@@ -82,22 +84,33 @@ export default function PhysicalCommands({ admin = false }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
 
-  async function close(sale) {
-    if (!window.confirm(`Fechar a comanda ${physicalNumber(sale) ? code(physicalNumber(sale)) : sale.order_number} no valor de ${money(sale.total)}? Confirme somente após receber o pagamento.`)) return;
+  function openCloseModal(sale) {
+    if (busy) return;
+    setError("");
+    setMessage("");
+    setPaymentMethod("dinheiro");
+    setClosingSale(sale);
+  }
+
+  async function confirmClose() {
+    if (!closingSale || busy) return;
+    const sale = closingSale;
     const total = Number(sale.total || 0);
-    const method = total > 0 ? window.prompt("Forma de pagamento: dinheiro, pix, debito ou credito", "dinheiro") : "dinheiro";
-    if (method === null) return;
-    const normalized = method.trim().toLowerCase();
-    if (!["dinheiro", "pix", "debito", "credito"].includes(normalized)) { setError("Forma de pagamento inválida."); return; }
+    if (!Number.isFinite(total) || total <= 0) {
+      setError("Esta comanda não possui valor válido para pagamento. Verifique os itens no Caixa.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch(`/api/sales/${sale.id}/close`, {
         method: "POST", headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ payments: total > 0 ? [{ method: normalized, amount: total }] : [] }),
+        body: JSON.stringify({ payments: [{ method: paymentMethod, amount: total }] }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error?.message || "Não foi possível fechar a comanda.");
-      setMessage("Comanda encerrada. O registro da venda foi preservado."); await load();
+      setClosingSale(null);
+      setMessage("Comanda encerrada. O registro da venda foi preservado.");
+      await load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
 
@@ -127,11 +140,36 @@ export default function PhysicalCommands({ admin = false }) {
           <div><strong>{row.number ? code(row.number) : row.label}</strong>
           <span>{row.sale ? `Em atendimento · ${money(row.sale.total)}` : row.active ? "Disponível" : "Inativa"}</span>
           {row.sale?.table?.table_number && <small>Mesa {row.sale.table.table_number}</small>}</div>
-          {row.sale && <button type="button" disabled={busy} onClick={() => close(row.sale)}>Fechar comanda</button>}
+          {row.sale && <button type="button" disabled={busy} onClick={() => openCloseModal(row.sale)}>Fechar comanda</button>}
           {admin && filter !== "abertas" && <button type="button" disabled={busy} onClick={() => changeActive(row)}>{row.active ? "Desativar" : "Ativar"}</button>}
         </article>)}
       </div>
       {!rows.length && <p className={styles.empty}>Nenhuma comanda encontrada neste filtro.</p>}
+      {closingSale && (
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setClosingSale(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="close-command-title" className={styles.modal}>
+            <div className={styles.modalHeading}>
+              <div><span>FECHAMENTO DE COMANDA</span><h3 id="close-command-title">Comanda {physicalNumber(closingSale) ? code(physicalNumber(closingSale)) : closingSale.order_number}</h3></div>
+              <button type="button" className={styles.modalDismiss} aria-label="Cancelar fechamento" disabled={busy} onClick={() => setClosingSale(null)}>×</button>
+            </div>
+            <p className={styles.modalDescription}>Confirme o recebimento do pagamento antes de encerrar esta comanda.</p>
+            <div className={styles.modalAmount}><small>VALOR TOTAL</small><strong>{money(closingSale.total)}</strong></div>
+            <fieldset className={styles.paymentMethods} disabled={busy}>
+              <legend>Forma de pagamento</legend>
+              {[[ "dinheiro", "Dinheiro" ], [ "pix", "Pix" ], [ "debito", "Débito" ], [ "credito", "Crédito" ]].map(([value, label]) => (
+                <label key={value} className={paymentMethod === value ? styles.paymentSelected : ""}>
+                  <input type="radio" name="commandPaymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} />{label}
+                </label>
+              ))}
+            </fieldset>
+            {error && <p className={styles.modalError} role="alert">{error}</p>}
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.cancelAction} disabled={busy} onClick={() => setClosingSale(null)}>Cancelar</button>
+              <button type="button" className={styles.confirmAction} disabled={busy || Number(closingSale.total) <= 0} onClick={confirmClose}>{busy ? "Fechando..." : "Confirmar pagamento e fechar"}</button>
+            </div>
+          </section>
+        </div>
+      )}
       <p className={styles.note}>As comandas cadastradas são o inventário físico. Comandas abertas representam atendimentos ativos; o histórico financeiro permanece separado.</p>
     </section>
   );
